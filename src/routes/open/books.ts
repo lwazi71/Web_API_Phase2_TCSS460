@@ -3,7 +3,7 @@ import express, { NextFunction, Request, Response, Router } from 'express';
 //Access the connection to Postgres Database
 import { pool, validationFunctions } from '../../core/utilities';
 
-const bookRouter: Router = express.Router();
+const booksRouter: Router = express.Router();
 
 const isStringProvided = validationFunctions.isStringProvided;
 
@@ -48,7 +48,7 @@ function mwValidAuthor(
  *
  * @apiError (404: Author Not Found) {string} message "Author not found"
  */
-bookRouter.get('/:author', (request: Request, response: Response) => {
+booksRouter.get('/:author', (request: Request, response: Response) => {
     const theQuery = 'SELECT name, message, priority FROM Demo WHERE name = $1';
     const values = [request.params.author];
 
@@ -74,3 +74,5 @@ bookRouter.get('/:author', (request: Request, response: Response) => {
             });
         });
 });
+
+export { booksRouter };

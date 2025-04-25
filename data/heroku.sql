@@ -27,7 +27,8 @@ CREATE TABLE Account_Credential (Credential_ID SERIAL PRIMARY KEY,
 
 
 DROP TABLE IF EXISTS BOOKS;
-CREATE TABLE BOOKS (id INT PRIMARY KEY,
+CREATE TABLE BOOKS (
+        id INT PRIMARY KEY,
         isbn13 BIGINT,
         authors TEXT,
         publication_year INT,
