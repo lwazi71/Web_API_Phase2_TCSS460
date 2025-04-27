@@ -1,0 +1,71 @@
+{
+	"info": {
+		"_postman_id": "0d0bb99d-cb76-4903-93cf-696f0d61df45",
+		"name": "Books API Beta Sprint",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "28559685",
+		"_collection_link": "https://tcss460-group-2.postman.co/workspace/Messages~07b38e4a-db12-4115-959a-2aec4fd06045/collection/28559685-0d0bb99d-cb76-4903-93cf-696f0d61df45?action=share&source=collection_link&creator=28559685"
+	},
+	"item": [
+		{
+			"name": "Isbn request",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has book object\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"book\");",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:4001/books/isbn/9780452284240"
+			},
+			"response": []
+		},
+		{
+			"name": "Author Request",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has books array\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"books\");",
+							"    pm.expect(jsonData.books).to.be.an(\"array\");",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:4001/books/author/George%20Orwell"
+			},
+			"response": []
+		}
+	]
+}
