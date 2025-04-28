@@ -4,7 +4,7 @@
     "description": "Template for a node/express web service for TCSS 460",
     "main": "dist/app.js",
     "scripts": {
-        "start": "NODE_PATH=./build node build/index.js",
+        "start": "node build/index.js",
         "postinstall": "tsc",
         "build": "tsc -p .",
         "dev": "nodemon -r dotenv/config src/index.ts dotenv_config_path=.env.development",
