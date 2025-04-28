@@ -38,9 +38,12 @@ Our team used Discord voice chat for real-time communication and discussion duri
 
 ### Meetings
 
-- **Monday, April 21 (10:30 AM - 11:30 AM)** - Discord
-- **Friday, April 25 (10:30 AM - 11:15 AM)** - Discord
-- **Sunday, April 27 (5:00 PM - 5:30 PM)** - Discord
+- **Monday, April 21 (10:30 AM - 11:30 AM)** - Discord Voice Chat
+    - Discussed the plan and outline for the beta spring including who will work on what tasks (routes and database). Discussed some future issues that we thought would be encountered.
+- **Friday, April 25 (10:30 AM - 11:15 AM)** - Discord Voice Chat
+    - Met together to discuss our progress on the tasks we split up. Everyone was about half way done and we discussed some final changes regarding the new database structure and the details on where the routes will be held and the process of combining the work.
+- **Sunday, April 27 (5:00 PM - 5:30 PM)** - Discord Voice Chat
+    - Final meeting of the beta sprint with finishing touches on the routes and testing with the populated database. Merged all of our code together.
 
 ### Comments
 
