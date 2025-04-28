@@ -1,0 +1,236 @@
+{
+	"info": {
+		"_postman_id": "0d0bb99d-cb76-4903-93cf-696f0d61df45",
+		"name": "Books API Beta Sprint",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "28559685",
+		"_collection_link": "https://tcss460-group-2.postman.co/workspace/Messages~07b38e4a-db12-4115-959a-2aec4fd06045/collection/28559685-0d0bb99d-cb76-4903-93cf-696f0d61df45?action=share&source=collection_link&creator=28559685"
+	},
+	"item": [
+		{
+			"name": "Isbn request",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Status code must be 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Test 3: Response must contain 'book' object",
+							"pm.test(\"Response has 'book' object\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"book\");",
+							"});",
+							"",
+							"// Test 4: Book object must have all required properties",
+							"pm.test(\"Book object has required fields\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book).to.have.all.keys(",
+							"        'book_id', ",
+							"        'isbn13', ",
+							"        'original_publication_year', ",
+							"        'original_title', ",
+							"        'title', ",
+							"        'image_url', ",
+							"        'small_image_url'",
+							"    );",
+							"});",
+							"",
+							"// Test 5: Book object fields must be correct types",
+							"pm.test(\"Book fields are correct types\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book.book_id).to.be.a('number');",
+							"    pm.expect(book.isbn13).to.be.a('string');",
+							"    pm.expect(book.original_publication_year).to.be.a('number');",
+							"    pm.expect(book.original_title).to.be.a('string');",
+							"    pm.expect(book.title).to.be.a('string');",
+							"    pm.expect(book.image_url).to.be.a('string');",
+							"    pm.expect(book.small_image_url).to.be.a('string');",
+							"});",
+							"",
+							"// Test 6: Book object values should not be empty",
+							"pm.test(\"Book fields are not empty\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book.original_title).to.not.be.empty;",
+							"    pm.expect(book.title).to.not.be.empty;",
+							"    pm.expect(book.image_url).to.not.be.empty;",
+							"    pm.expect(book.small_image_url).to.not.be.empty;",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:4001/books/isbn/9780452284240"
+			},
+			"response": []
+		},
+		{
+			"name": "Author Request",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Status code must be 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Test 3: Response must contain 'books' array",
+							"pm.test(\"Response has 'books' array\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"books\");",
+							"    pm.expect(jsonData.books).to.be.an('array');",
+							"});",
+							"",
+							"// Test 4: If array is not empty, each book must have all fields",
+							"pm.test(\"Each book has required fields if array not empty\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    if (jsonData.books.length > 0) {",
+							"        jsonData.books.forEach((book) => {",
+							"            pm.expect(book).to.have.all.keys(",
+							"                'book_id', ",
+							"                'isbn13', ",
+							"                'original_publication_year', ",
+							"                'original_title', ",
+							"                'title', ",
+							"                'image_url', ",
+							"                'small_image_url', ",
+							"                'formatted'",
+							"            );",
+							"        });",
+							"    }",
+							"});",
+							"",
+							"// Test 5: If books array not empty, fields must be correct types",
+							"pm.test(\"Each book fields are correct types if array not empty\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    if (jsonData.books.length > 0) {",
+							"        jsonData.books.forEach((book) => {",
+							"            pm.expect(book.book_id).to.be.a('number');",
+							"            pm.expect(book.isbn13).to.be.a('number');",
+							"            pm.expect(book.original_publication_year).to.be.a('number');",
+							"            pm.expect(book.original_title).to.be.a('string');",
+							"            pm.expect(book.title).to.be.a('string');",
+							"            pm.expect(book.image_url).to.be.a('string');",
+							"            pm.expect(book.small_image_url).to.be.a('string');",
+							"            pm.expect(book.formatted).to.be.a('string');",
+							"        });",
+							"    }",
+							"});",
+							"",
+							"// Test 6: If array is empty, still return 200",
+							"pm.test(\"Books array can be empty but must be array type\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData.books).to.be.an('array');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:4001/books/author/George%20Orwell"
+			},
+			"response": []
+		},
+		{
+			"name": "Books Request",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Test 1: Status code is 201",
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"// Test 2: Response has a 'book' object",
+							"pm.test(\"Response has a 'book' object\", function () {",
+							"    const jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property(\"book\");",
+							"});",
+							"",
+							"// Test 3: Book object has all required fields",
+							"pm.test(\"Book object has all required fields\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book).to.have.all.keys(",
+							"        'book_id', ",
+							"        'isbn13', ",
+							"        'original_publication_year', ",
+							"        'original_title', ",
+							"        'title', ",
+							"        'image_url', ",
+							"        'small_image_url'",
+							"    );",
+							"});",
+							"",
+							"// Test 4: Each book field has correct type",
+							"pm.test(\"Each book field has correct type\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book.book_id).to.be.a('number');",
+							"    pm.expect(book.isbn13).to.be.a('string');",
+							"    pm.expect(book.original_publication_year).to.be.a('number');",
+							"    pm.expect(book.original_title).to.be.a('string');",
+							"    pm.expect(book.title).to.be.a('string');",
+							"    pm.expect(book.image_url).to.be.a('string');",
+							"    pm.expect(book.small_image_url).to.be.a('string');",
+							"});",
+							"",
+							"// Test 5: Important book fields are not empty",
+							"pm.test(\"Important book fields are not empty\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book.original_title).to.not.be.empty;",
+							"    pm.expect(book.title).to.not.be.empty;",
+							"    pm.expect(book.image_url).to.not.be.empty;",
+							"    pm.expect(book.small_image_url).to.not.be.empty;",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"isbn13\": \"4781234567890\",\n    \"original_publication_year\": 2024,\n    \"original_title\": \"The Adventures of CodeGPT\",\n    \"title\": \"The Adventures of CodeGPT: Rise of the Bot\",\n    \"image_url\": \"https://example.com/large-image.jpg\",\n    \"small_image_url\": \"https://example.com/small-image.jpg\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "http://localhost:4001/books"
+			},
+			"response": []
+		}
+	]
+}
