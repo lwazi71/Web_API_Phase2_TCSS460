@@ -40,24 +40,119 @@ function mwValidAuthor(
 }
 
 /**
+ * @api {post} /books Create a new book
+ * @apiName CreateBook
+ * @apiGroup Books
+ *
+ * @apiBody {String} title Full title of the book. (required)
+ * @apiBody {String} original_title Original title of the book. (required)
+ * @apiBody {BigInt} isbn13 ISBN-13 number (10–13 digits). (required)
+ * @apiBody {Number} original_publication_year Year the book was published. (required)
+ * @apiBody {String} image_url Link to the large image of the book. (required)
+ * @apiBody {String} small_image_url Link to the small image of the book. (required)
+ *
+ * @apiSuccess {Object} book The newly created book object.
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 201 Created
+ *    {
+ *      "book": {
+ *          "book_id": 12345,
+ *          "isbn13": 9781234567897,
+ *          "original_publication_year": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "image_url": "http://example.com/large.jpg",
+ *          "small_image_url": "http://example.com/small.jpg"
+ *      }
+ *    }
+ *
+ * @apiError (400) InvalidInput "Invalid input data"
+ * @apiError (500) ServerError "server error - contact support"
+ */
+booksRouter.post('/', async (request: Request, response: Response) => {
+    const {
+        title,
+        original_title,
+        isbn13,
+        original_publication_year,
+        image_url,
+        small_image_url,
+    } = request.body;
+
+    // Validate input
+    if (
+        !title ||
+        !original_title ||
+        !isbn13 ||
+        !original_publication_year ||
+        !image_url ||
+        !small_image_url
+    ) {
+        return response.status(400).send({
+            message: 'Invalid input data',
+        });
+    }
+
+    try {
+        const isbnNumber = BigInt(isbn13);
+        const dummyBookId = Math.floor(Math.random() * 1000000);
+
+        const insertQuery = `
+            INSERT INTO books (book_id, isbn13, original_publication_year, original_title, title, image_url, small_image_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING book_id, isbn13, original_publication_year, original_title, title, image_url, small_image_url
+        `;
+        const values = [
+            dummyBookId,
+            isbnNumber,
+            original_publication_year,
+            original_title,
+            title,
+            image_url,
+            small_image_url,
+        ];
+
+        const result = await pool.query(insertQuery, values);
+
+        response.status(201).send({
+            book: result.rows[0],
+        });
+    } catch (error) {
+        console.error('DB Query error on POST /books');
+        console.error(error);
+        response.status(500).send({
+            message: 'server error - contact support',
+        });
+    }
+});
+
+/**
  * @api {get} /books/author/:author Retrieve books by author
  * @apiName GetBooksByAuthor
  * @apiGroup Books
  *
- * @apiParam {String} author Full name of the author (URL encoded if needed).
+ * @apiParam {String} author Author's full name (URL encoded if needed).
  *
- * @apiSuccess {Object[]} books List of books written by the author.
- * @apiSuccess {Number} books.book_id Book ID.
- * @apiSuccess {BigInt} books.isbn13 ISBN-13 number.
- * @apiSuccess {Number} books.original_publication_year Year the book was first published.
- * @apiSuccess {String} books.original_title Original title of the book.
- * @apiSuccess {String} books.title Full title.
- * @apiSuccess {String} books.image_url Link to a large image of the book.
- * @apiSuccess {String} books.small_image_url Link to a small image of the book.
- * @apiSuccess {String} books.formatted Formatted string combining ISBN and title.
+ * @apiSuccess {Object[]} books List of books by the given author.
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "books": [
+ *        {
+ *          "book_id": 12345,
+ *          "isbn13": 9781234567897,
+ *          "original_publication_year": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "image_url": "http://example.com/large.jpg",
+ *          "small_image_url": "http://example.com/small.jpg",
+ *          "formatted": "{9781234567897} - Example Title Full"
+ *        }
+ *      ]
+ *    }
  *
- * @apiError (404 Not Found) {String} message "Author not found"
- * @apiError (500 Internal Server Error) {String} message "server error - contact support"
+ * @apiError (404) AuthorNotFound "Author not found"
+ * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/author/:author', (request: Request, response: Response) => {
     const author = request.params.author;
@@ -95,20 +190,26 @@ booksRouter.get('/author/:author', (request: Request, response: Response) => {
  * @apiName GetBookByISBN
  * @apiGroup Books
  *
- * @apiParam {String} isbn ISBN-13 number of the book (10–13 digits).
+ * @apiParam {String} isbn ISBN-13 number (10–13 digits).
  *
- * @apiSuccess {Object} book Book details.
- * @apiSuccess {Number} book.book_id Book ID.
- * @apiSuccess {BigInt} book.isbn13 ISBN-13 number.
- * @apiSuccess {Number} book.original_publication_year Year the book was first published.
- * @apiSuccess {String} book.original_title Original title of the book.
- * @apiSuccess {String} book.title Full title.
- * @apiSuccess {String} book.image_url Link to a large image of the book.
- * @apiSuccess {String} book.small_image_url Link to a small image of the book.
+ * @apiSuccess {Object} book Book details for the given ISBN.
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "book_id": 12345,
+ *          "isbn13": 9781234567897,
+ *          "original_publication_year": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "image_url": "http://example.com/large.jpg",
+ *          "small_image_url": "http://example.com/small.jpg"
+ *      }
+ *    }
  *
- * @apiError (400 Bad Request) {String} message "Invalid ISBN format."
- * @apiError (404 Not Found) {String} message "Book not found"
- * @apiError (500 Internal Server Error) {String} message "server error - contact support"
+ * @apiError (400) InvalidISBNFormat "Invalid ISBN format."
+ * @apiError (404) BookNotFound "Book not found"
+ * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get(
     '/isbn/:isbn',
@@ -119,10 +220,10 @@ booksRouter.get(
 
         try {
             const theQuery = `
-                SELECT *
-                FROM books
-                WHERE isbn13 = $1
-            `;
+            SELECT *
+            FROM books
+            WHERE isbn13 = $1
+        `;
             const values = [isbnNumber];
 
             const result = await pool.query(theQuery, values);
