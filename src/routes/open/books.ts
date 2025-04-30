@@ -2,10 +2,22 @@
 import express, { NextFunction, Request, Response, Router } from 'express';
 // Access the connection to Postgres Database
 import { pool, validationFunctions } from '../../core/utilities';
+import { QueryResult } from 'pg';
 
 const booksRouter: Router = express.Router();
 
 const isStringProvided = validationFunctions.isStringProvided;
+
+interface BookWithAuthors {
+    book_id: number;
+    isbn13: number;
+    original_publication_year: number;
+    original_title: string | null;
+    title: string;
+    image_url: string | null;
+    small_image_url: string | null;
+    authors: string; // comma-separated list
+  }
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -241,6 +253,75 @@ booksRouter.get(
             console.error('DB Query error on GET /isbn/:isbn');
             console.error(error);
             response.status(500).send({
+                message: 'server error - contact support',
+            });
+        }
+    }
+);
+
+booksRouter.get('/age', async (req: Request, res: Response) => {
+        if (!req.query.order) {
+            return res.status(400).json({ // return to stop the rest of code from running
+                error: 'Missing order query parameter. It must be "old" or "new"'
+            });
+        }
+
+        const order: string = typeof req.query.order === 'string' ? 
+            (req.query.order as string).toLowerCase() : '';
+        const limit: number = parseInt(req.query.limit as string) || 20; // default limit of books is 20
+        const page: number = parseInt(req.query.page as string) || 1; // default page number is 1
+
+        if (order !== 'old' && order !== 'new') {
+            return res.status(400).json({
+                error: 'Invalid order query parameter. It must be "old" or "new"'
+            });
+        }
+        if (limit <= 0 || limit > 200) {
+            return res.status(400).json({
+                error: 'Invalid limit query parameter. It must be positive and less than 200.'
+            });
+        }
+        if (page <= 0 || page > 100) {
+            return res.status(400).json({
+                error: 'Invalid page query parameter. It must be positive and less than 100.'
+            });
+        }
+
+        const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
+        const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
+
+        try {
+            const insertQuery: string = `
+                SELECT 
+                    b.book_id,
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                GROUP BY b.book_id
+                ORDER BY b.original_publication_year ${orderInSQL}
+                LIMIT $1
+                OFFSET $2
+            `;
+
+            const values = [orderInSQL, limit, offset];
+
+            const result: QueryResult<BookWithAuthors> = await pool.query(insertQuery, values);
+
+            if (result.rowCount === 0) {
+                return res.status(200).json({ books: [] });
+            }
+            
+            res.status(200).json({ books: result.rows});
+        } catch (error) {
+            console.error('Database query error on GET /books/age');
+            console.error(error);
+            res.status(500).send({
                 message: 'server error - contact support',
             });
         }
