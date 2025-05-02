@@ -1,4 +1,4 @@
--- Each table below populated with respective CSV file through psql.
+-- Each table below populated with respective CSV file through Heroku CLI.
 
 DROP TABLE IF EXISTS books;
 
