@@ -351,7 +351,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
                 OFFSET $2
             `;
 
-            const values = [orderInSQL, limit, offset];
+            const values = [limit, offset];
 
             const result: QueryResult<BookWithAuthors> = await pool.query(insertQuery, values);
 
