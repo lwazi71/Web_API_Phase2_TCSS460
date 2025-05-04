@@ -320,12 +320,12 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
         }
         if (limit <= 0 || limit > 200) {
             return res.status(400).json({
-                error: 'Invalid limit query parameter. It must be positive and less than 200.'
+                error: 'Invalid limit query parameter. It must be zero or greater and less than 200.'
             });
         }
         if (page <= 0 || page > 100) {
             return res.status(400).json({
-                error: 'Invalid page query parameter. It must be positive and less than 100.'
+                error: 'Invalid page query parameter. It must be zero or greater and less than 100.'
             });
         }
 
