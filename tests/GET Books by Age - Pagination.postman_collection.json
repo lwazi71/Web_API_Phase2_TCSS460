@@ -1,0 +1,421 @@
+{
+	"info": {
+		"_postman_id": "27de2fb7-0884-4b15-9bb0-b89ddbab18dc",
+		"name": "GET Books by Age - Pagination",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43705288",
+		"_collection_link": "https://jacob-7976102.postman.co/workspace/Jacob's-Workspace~3d76766f-3710-45b4-84f1-729857820d3e/collection/43705288-27de2fb7-0884-4b15-9bb0-b89ddbab18dc?action=share&source=collection_link&creator=43705288"
+	},
+	"item": [
+		{
+			"name": "GET Books by Increasing Age",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has 'books' array\", function () {\r",
+							"    pm.expect(response).to.have.property(\"books\");\r",
+							"    pm.expect(response.books).to.be.an(\"array\");\r",
+							"});\r",
+							"\r",
+							"if (response.books.length > 0) {\r",
+							"    const sample = response.books[0];\r",
+							"    pm.test(\"Each book has expected fields\", function () {\r",
+							"        pm.expect(sample).to.have.property(\"book_id\");\r",
+							"        pm.expect(sample).to.have.property(\"isbn13\");\r",
+							"        pm.expect(sample).to.have.property(\"original_publication_year\");\r",
+							"        pm.expect(sample).to.have.property(\"original_title\");\r",
+							"        pm.expect(sample).to.have.property(\"title\");\r",
+							"        pm.expect(sample).to.have.property(\"image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"small_image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"authors\");\r",
+							"    });\r",
+							"\r",
+							"    pm.test(\"Books are sorted in ascending order of publication year\", function () {\r",
+							"        const years = response.books.map(book => book.original_publication_year);\r",
+							"        const sorted = [...years].sort((a, b) => a - b);\r",
+							"        pm.expect(years).to.eql(sorted);\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Books array is empty (valid but no data returned)\", function () {\r",
+							"        pm.expect(response.books.length).to.equal(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=old",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "old"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET Books by Decreasing Age",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has 'books' array\", function () {\r",
+							"    pm.expect(response).to.have.property(\"books\");\r",
+							"    pm.expect(response.books).to.be.an(\"array\");\r",
+							"});\r",
+							"\r",
+							"if (response.books.length > 0) {\r",
+							"    const sample = response.books[0];\r",
+							"    pm.test(\"Each book has expected fields\", function () {\r",
+							"        pm.expect(sample).to.have.property(\"book_id\");\r",
+							"        pm.expect(sample).to.have.property(\"isbn13\");\r",
+							"        pm.expect(sample).to.have.property(\"original_publication_year\");\r",
+							"        pm.expect(sample).to.have.property(\"original_title\");\r",
+							"        pm.expect(sample).to.have.property(\"title\");\r",
+							"        pm.expect(sample).to.have.property(\"image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"small_image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"authors\");\r",
+							"    });\r",
+							"\r",
+							"    pm.test(\"Books are sorted in decreasing order of publication year\", function () {\r",
+							"        const years = response.books.map(book => book.original_publication_year);\r",
+							"        const sorted = [...years].sort((a, b) => b - a); \r",
+							"        pm.expect(years).to.eql(sorted); \r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Books array is empty (valid but no data returned)\", function () {\r",
+							"        pm.expect(response.books.length).to.equal(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=new",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "new"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Missing Order Parameter (400)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"400 - Missing order query parameter\", () => {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    pm.response.to.have.jsonBody(\"error\");\r",
+							"    pm.expect(pm.response.json().error).to.eql('Missing order query parameter. It must be \"old\" or \"new\"');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Order Parameter (400)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"400 - Invalid order query parameter\", () => {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    pm.response.to.have.jsonBody(\"error\");\r",
+							"    pm.expect(pm.response.json().error).to.eql('Invalid order query parameter. It must be \"old\" or \"new\"');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=test",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "test"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Limit Parameter (400) - Negative",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"400 - Invalid limit query parameter\", () => {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    pm.response.to.have.jsonBody(\"error\");\r",
+							"    pm.expect(pm.response.json().error).to.eql('Invalid limit query parameter. It must be zero or greater and less than 200.');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=old&limit=-5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "old"
+						},
+						{
+							"key": "limit",
+							"value": "-5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Limit Parameter (400) - Exceeds",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"400 - Invalid limit query parameter\", () => {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    pm.response.to.have.jsonBody(\"error\");\r",
+							"    pm.expect(pm.response.json().error).to.eql('Invalid limit query parameter. It must be zero or greater and less than 200.');\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=old&limit=205",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "old"
+						},
+						{
+							"key": "limit",
+							"value": "205"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Page Parameter (400) - Negative",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"400 - Invalid page query parameter\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    pm.response.to.have.jsonBody(\"error\");\r",
+							"    pm.expect(pm.response.json().error).to.eql('Invalid page query parameter. It must be zero or greater and less than 100.');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=old&page=-5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "old"
+						},
+						{
+							"key": "page",
+							"value": "-5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid Page Parameter (400) - Exceeds",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"400 - Invalid page query parameter\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    pm.response.to.have.jsonBody(\"error\");\r",
+							"    pm.expect(pm.response.json().error).to.eql('Invalid page query parameter. It must be zero or greater and less than 100.');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:4000/books/age?order=old&page=105",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books",
+						"age"
+					],
+					"query": [
+						{
+							"key": "order",
+							"value": "old"
+						},
+						{
+							"key": "page",
+							"value": "105"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
