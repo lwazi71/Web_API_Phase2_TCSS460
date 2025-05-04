@@ -259,6 +259,48 @@ booksRouter.get(
     }
 );
 
+/**
+ * @api {get} /books/age Retrieve books by age (publication year)
+ * @apiName GetBooksByAge
+ * @apiGroup Books
+ *
+ * @apiQuery {String="old","new"} order Required. Sort order: "old" for oldest first, "new" for newest first.
+ * @apiQuery {Number{1-200}} [limit=20] Optional. Number of books to return per page.
+ * @apiQuery {Number{1-100}} [page=1] Optional. Page number for pagination.
+ *
+ * @apiSuccess {Object[]} books List of books sorted by publication year.
+ * @apiSuccess {Number} books.book_id Book ID.
+ * @apiSuccess {String} books.isbn13 ISBN-13.
+ * @apiSuccess {Number} books.original_publication_year Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {String} books.image_url Full-size image URL.
+ * @apiSuccess {String} books.small_image_url Small image URL.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "books": [
+ *        {
+ *          "book_id": 12345,
+ *          "isbn13": "9781234567897",
+ *          "original_publication_year": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "image_url": "http://example.com/large.jpg",
+ *          "small_image_url": "http://example.com/small.jpg",
+ *          "authors": "Author One, Author Two"
+ *        }
+ *      ]
+ *    }
+ *
+ * @apiError (400) MissingOrderParameter "Missing order query parameter. It must be 'old' or 'new'"
+ * @apiError (400) InvalidOrderParameter "Invalid order query parameter. It must be 'old' or 'new'"
+ * @apiError (400) InvalidLimitParameter "Invalid limit query parameter. It must be positive and less than 200."
+ * @apiError (400) InvalidPageParameter "Invalid page query parameter. It must be positive and less than 100."
+ * @apiError (500) ServerError "server error - contact support"
+ */
 booksRouter.get('/age', async (req: Request, res: Response) => {
         if (!req.query.order) {
             return res.status(400).json({ // return to stop the rest of code from running
