@@ -1,0 +1,100 @@
+{
+	"info": {
+		"_postman_id": "4ee9cd66-a607-4aaf-af0e-4ec870eef21f",
+		"name": "All Books Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "28559685",
+		"_collection_link": "https://tcss460-group-2.postman.co/workspace/Messages~07b38e4a-db12-4115-959a-2aec4fd06045/collection/28559685-4ee9cd66-a607-4aaf-af0e-4ec870eef21f?action=share&source=collection_link&creator=28559685"
+	},
+	"item": [
+		{
+			"name": "All Books",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has books array\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"books\");",
+							"    pm.expect(json.books).to.be.an(\"array\");",
+							"});",
+							"",
+							"pm.test(\"Response includes total, page, and limit\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"total\").that.is.a(\"number\");",
+							"    pm.expect(json).to.have.property(\"page\").that.is.a(\"number\");",
+							"    pm.expect(json).to.have.property(\"limit\").that.is.a(\"number\");",
+							"});",
+							"",
+							"pm.test(\"Each book has required fields (if present)\", function () {",
+							"    const books = pm.response.json().books;",
+							"    if (books.length > 0) {",
+							"        const book = books[0];",
+							"        const requiredFields = [\"book_id\", \"isbn13\", \"title\", \"authors\"];",
+							"        requiredFields.forEach(field => {",
+							"            pm.expect(book).to.have.property(field);",
+							"        });",
+							"    }",
+							"});",
+							"",
+							"pm.test(\"Handles empty array (if no books found)\", function () {",
+							"    const books = pm.response.json().books;",
+							"    if (books.length === 0) {",
+							"        pm.expect(books).to.be.an(\"array\").that.is.empty;",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:4000/books?page=1&limit=5",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "4000",
+					"path": [
+						"books"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
