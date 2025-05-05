@@ -119,13 +119,32 @@ export { booksRouter };
  */
 booksRouter.post('/books', async (request: Request, response: Response) => {
     const {
-        title, original_title, isbn13, original_publication_year, authors,
-        average_rating, ratings_count, ratings_1, ratings_2, ratings_3,
-        ratings_4, ratings_5, image_url, small_image_url
+        title,
+        original_title,
+        isbn13,
+        original_publication_year,
+        authors,
+        average_rating,
+        ratings_count,
+        ratings_1,
+        ratings_2,
+        ratings_3,
+        ratings_4,
+        ratings_5,
+        image_url,
+        small_image_url,
     } = request.body;
 
     // Validate the input data
-    if (!title || !original_title || !isbn13 || !original_publication_year || !authors || !image_url || !small_image_url) {
+    if (
+        !title ||
+        !original_title ||
+        !isbn13 ||
+        !original_publication_year ||
+        !authors ||
+        !image_url ||
+        !small_image_url
+    ) {
         return response.status(400).send({
             message: 'Invalid input data',
         });
@@ -146,9 +165,20 @@ booksRouter.post('/books', async (request: Request, response: Response) => {
                       image_url, small_image_url
         `;
         const values = [
-            isbnNumber, authors, original_publication_year, original_title, title,
-            average_rating, ratings_count, ratings_1, ratings_2, ratings_3,
-            ratings_4, ratings_5, image_url, small_image_url
+            isbnNumber,
+            authors,
+            original_publication_year,
+            original_title,
+            title,
+            average_rating,
+            ratings_count,
+            ratings_1,
+            ratings_2,
+            ratings_3,
+            ratings_4,
+            ratings_5,
+            image_url,
+            small_image_url,
         ];
 
         const result = await pool.query(insertQuery, values);
@@ -188,10 +218,15 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 
     try {
         const booksQuery = `
-            SELECT * FROM books
-            ORDER BY book_id
-            LIMIT $1 OFFSET $2
-        `;
+    SELECT 
+        b.*, 
+        STRING_AGG(a.author, ', ') AS authors
+    FROM books b
+    JOIN authors a ON b.book_id = a.book_id
+    GROUP BY b.book_id
+    ORDER BY b.book_id
+    LIMIT $1 OFFSET $2
+`;
         const countQuery = `SELECT COUNT(*) FROM books`;
 
         const [booksResult, countResult] = await Promise.all([
@@ -215,4 +250,3 @@ booksRouter.get('/', async (request: Request, response: Response) => {
         });
     }
 });
-
