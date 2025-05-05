@@ -1,0 +1,175 @@
+{
+  "info": {
+    "name": "Books API Tests",
+    "description": "Test collection for validating the /books endpoint",
+    "_postman_id": "0d0bb99d-cb76-4903-93cf-696f0d61df4",
+    "schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Get All Books",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/books",
+          "host": ["{{baseUrl}}"],
+          "path": ["books"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Status code is 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Response has required top-level fields",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Response has required top-level fields', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json).to.have.property('books');",
+              "    pm.expect(json).to.have.property('total');",
+              "    pm.expect(json).to.have.property('page');",
+              "    pm.expect(json).to.have.property('limit');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Top-level fields have correct types",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Top-level fields have correct types', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.total).to.be.a('number');",
+              "    pm.expect(json.page).to.be.a('number');",
+              "    pm.expect(json.limit).to.be.a('number');",
+              "    pm.expect(json.books).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Each book has required schema fields and correct types",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Each book has required schema fields and correct types', function () {",
+              "    const json = pm.response.json();",
+              "    if (json.books.length > 0) {",
+              "        json.books.forEach((book) => {",
+              "            pm.expect(book).to.have.property('book_id');",
+              "            pm.expect(book).to.have.property('isbn13');",
+              "            pm.expect(book).to.have.property('authors');",
+              "            pm.expect(book).to.have.property('original_publication_year');",
+              "            pm.expect(book).to.have.property('original_title');",
+              "            pm.expect(book).to.have.property('title');",
+              "            pm.expect(book).to.have.property('average_rating');",
+              "            pm.expect(book).to.have.property('ratings_count');",
+              "            pm.expect(book).to.have.property('ratings_1');",
+              "            pm.expect(book).to.have.property('ratings_2');",
+              "            pm.expect(book).to.have.property('ratings_3');",
+              "            pm.expect(book).to.have.property('ratings_4');",
+              "            pm.expect(book).to.have.property('ratings_5');",
+              "            pm.expect(book).to.have.property('image_url');",
+              "            pm.expect(book).to.have.property('small_image_url');",
+              "            pm.expect(book.book_id).to.be.a('number');",
+              "            pm.expect(book.isbn13).to.be.a('string').and.not.empty;",
+              "            pm.expect(book.authors).to.be.a('string').and.not.empty;",
+              "            pm.expect(book.original_publication_year).to.be.a('number');",
+              "            pm.expect(book.original_title).to.be.a('string');",
+              "            pm.expect(book.title).to.be.a('string').and.not.empty;",
+              "            pm.expect(book.average_rating).to.be.a('number');",
+              "            pm.expect(book.ratings_count).to.be.a('number');",
+              "            pm.expect(book.ratings_1).to.be.a('number');",
+              "            pm.expect(book.ratings_2).to.be.a('number');",
+              "            pm.expect(book.ratings_3).to.be.a('number');",
+              "            pm.expect(book.ratings_4).to.be.a('number');",
+              "            pm.expect(book.ratings_5).to.be.a('number');",
+              "            pm.expect(book.image_url).to.be.a('string').and.not.empty;",
+              "            pm.expect(book.small_image_url).to.be.a('string').and.not.empty;",
+              "        });",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Handles empty books array correctly",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Handles empty books array correctly', function () {",
+              "    const json = pm.response.json();",
+              "    pm.expect(json.books).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagination works correctly",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Pagination works correctly', async function () {",
+              "    const json1 = pm.response.json();",
+              "    const limit = json1.limit;",
+              "    const totalBooks = json1.total;",
+              "    pm.expect(json1.books.length).to.be.at.most(limit);",
+              "    pm.expect(json1.total).to.be.a('number');",
+              "    const totalPages = Math.ceil(totalBooks / limit);",
+              "    if (json1.page < totalPages) {",
+              "        const nextPage = json1.page + 1;",
+              "        const resNextPage = await pm.sendRequest({",
+              "            url: pm.environment.get('baseUrl') + `/books?page=${nextPage}&limit=${limit}`,",
+              "            method: 'GET',",
+              "        });",
+              "        const json2 = resNextPage.json();",
+              "        pm.expect(json2.books.length).to.be.at.most(limit);",
+              "        pm.expect(json2.page).to.eql(nextPage);",
+              "        pm.expect(json2.total).to.eql(totalBooks);",
+              "        if (json2.page === totalPages) {",
+              "            pm.expect(json2.books).to.not.deep.equal(json1.books);",
+              "        }",
+              "    }",
+              "});"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
