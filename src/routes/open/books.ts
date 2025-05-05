@@ -321,6 +321,60 @@ booksRouter.get(
         }
     }
 );
+/**
+ * @api {get} /books Retrieve all books (paginated)
+ * @apiName GetAllBooks
+ * @apiGroup Books
+ *
+ * @apiParam {Number} [page=1] Page number for pagination.
+ * @apiParam {Number} [limit=10] Number of books per page.
+ *
+ * @apiSuccess {Object[]} books List of books for the page.
+ * @apiSuccess {Number} total Total number of books.
+ * @apiSuccess {Number} page Current page number.
+ * @apiSuccess {Number} limit Number of books per page.
+ *
+ * @apiError (500 Internal Server Error) {String} message "server error - contact support"
+ */
+booksRouter.get('/', async (request: Request, response: Response) => {
+    const page = parseInt(request.query.page as string) || 1;
+    const limit = parseInt(request.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    try {
+        const booksQuery = `
+    SELECT 
+        b.*, 
+        STRING_AGG(a.author, ', ') AS authors
+    FROM books b
+    JOIN authors a ON b.book_id = a.book_id
+    GROUP BY b.book_id
+    ORDER BY b.book_id
+    LIMIT $1 OFFSET $2
+`;
+        const countQuery = `SELECT COUNT(*) FROM books`;
+
+        const [booksResult, countResult] = await Promise.all([
+            pool.query(booksQuery, [limit, offset]),
+            pool.query(countQuery),
+        ]);
+
+        const total = parseInt(countResult.rows[0].count);
+
+        response.send({
+            books: booksResult.rows,
+            total,
+            page,
+            limit,
+        });
+    } catch (error) {
+        console.error('DB Query error on GET /books');
+        console.error(error);
+        response.status(500).send({
+            message: 'server error - contact support',
+        });
+    }
+});
 
 /**
  * @api {get} /books/age Retrieve books by age (publication year)
