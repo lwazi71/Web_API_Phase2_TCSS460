@@ -39,7 +39,7 @@ Our team used Discord voice chat for real-time communication and discussion duri
 ### Meetings
 
 - **Monday, April 21 (10:30 AM - 11:30 AM)** - Discord Voice Chat
-    - Discussed the plan and outline for the beta spring including who will work on what tasks (routes and database). Discussed some future issues that we thought would be encountered.
+    - Discussed the plan and outline for the beta sprint including who will work on what tasks (routes and database). Discussed some future issues that we thought would be encountered.
 - **Friday, April 25 (10:30 AM - 11:15 AM)** - Discord Voice Chat
     - Met together to discuss our progress on the tasks we split up. Everyone was about half way done and we discussed some final changes regarding the new database structure and the details on where the routes will be held and the process of combining the work.
 - **Sunday, April 27 (5:00 PM - 5:30 PM)** - Discord Voice Chat
@@ -51,3 +51,28 @@ Our team used Discord voice chat for real-time communication and discussion duri
 - Connecting to the Heroku database causing issues in Postman testing.
 - Encoding format for populating database as Heroku seems to only allow UTF-8 and the CSV file had other encodings. To fix this, we had to specific the format when copying the data into the database.
 - Issues with separating the CSV file into our three different table database design. To fix this, used a TypeScript script in the data folder for direct access.
+
+## Beta II Sprint
+
+### Contribution
+
+- **Jacob Klymenko** - Wrote functionality, documentation, and unit tests for the "At least one other method" requirement with a GET books by age with pagination route based on the original publication year. Led two of three meetings.
+- **Lwazi M Mabota** - Wrote functionality, documentation, and unit tests for the change a password route. Led one of the meetings. Handled the merging of all branches into dev and main.
+- **Thomas Le** - Wrote functionality, documentation, and unit tests for the GET all books with pagination.
+- **Owen Orlic** - Wrote functionality, documentation, and unit tests for adding/subtracting stars from rating level, change number of ratings, and search for books in a range of average ratings.
+
+### Meetings
+
+- **Monday, April 28 (10:30 AM - 11:00 AM)** - Discord Voice Chat
+    - Discussed the plan for the beta 2 sprint including who will work on what tasks. Discussed how we can distribute the remaining routes between the members for the next two sprints. 
+- **Friday, May 2 (10:30 AM - 11:00 AM)** - Discord Voice Chat
+    - Met together to discuss our progress on the designated tasks. Found out that our Github-hosted documenation page was not updated and ran the Apidoc command to update it. Lastly, helped each other with some issues we were facing for our routes on code and logic.
+- **Sunday, May 2 (5:00 PM - 6:00 PM)** - Discord Voice Chat
+    - Final meeting of the beta 2 sprint with finishing touches on the routes, SQL queries, and merging our individual branches into dev and then into main after agreeing.
+
+### Comments
+
+- We realized our Github-hosted documenation page was not updated and had to run the Apidoc command to update the `/docs` folder.
+- We found that we had slight struggles with writing Postman tests. We took some time to help each other help understand.
+- Issues with understanding how to work with our current database and more specifically using and writing SQL queries. 
+- Found that we were overcomplicating some of our routes and quickly fixed that.
