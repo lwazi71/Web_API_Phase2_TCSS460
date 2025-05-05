@@ -6,6 +6,7 @@ import { pool, validationFunctions } from '../../core/utilities';
 const booksRouter: Router = express.Router();
 
 const isStringProvided = validationFunctions.isStringProvided;
+const isNumberProvided = validationFunctions.isNumberProvided;
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -20,6 +21,64 @@ function mwValidISBN(request: Request, response: Response, next: NextFunction) {
     if (isValid) next();
     else {
         response.status(400).send({ message: 'Invalid ISBN format.' });
+    }
+}
+
+function mwValidAvgRatingRange(
+    request: Request,
+    response: Response,
+    next: NextFunction
+) {
+    const minRating: number = parseFloat(request.query.minRating as string);
+    const maxRating: number = parseFloat(request.query.maxRating as string);
+    if (
+        isNumberProvided(minRating) &&
+        isNumberProvided(maxRating) &&
+        minRating >= 1 &&
+        maxRating <= 5 &&
+        minRating <= maxRating
+    ) {
+        next();
+    } else {
+        console.error('Invalid or missing Rating Range');
+        response.status(400).send({
+            message:
+                'Invalid or missing Rating Range - please refer to documentation',
+        });
+    }
+}
+
+function mwValidNumberOfRatings(
+    request: Request,
+    response: Response,
+    next: NextFunction
+) {
+    const numRatings: number = parseInt(request.params.numRatings as string);
+    if (isNumberProvided(numRatings) && numRatings >= 0) {
+        next();
+    } else {
+        console.error('Invalid or missing Number of Ratings');
+        response.status(400).send({
+            message:
+                'Invalid or missing Number of Ratings - please refer to documentation',
+        });
+    }
+}
+
+function mwValidRating(
+    request: Request,
+    response: Response,
+    next: NextFunction
+) {
+    const rating: number = parseInt(request.query.rating as string);
+    if (isNumberProvided(rating) && rating >= 1 && rating <= 5) {
+        next();
+    } else {
+        console.error('Invalid or missing Rating');
+        response.status(400).send({
+            message:
+                'Invalid or missing Rating - please refer to documentation',
+        });
     }
 }
 
@@ -154,36 +213,40 @@ booksRouter.post('/', async (request: Request, response: Response) => {
  * @apiError (404) AuthorNotFound "Author not found"
  * @apiError (500) ServerError "server error - contact support"
  */
-booksRouter.get('/author/:author', (request: Request, response: Response) => {
-    const author = request.params.author;
-    const theQuery = `
+booksRouter.get(
+    '/author/:author',
+    //mwValidAuthor,
+    (request: Request, response: Response) => {
+        const author = request.params.author;
+        const theQuery = `
         SELECT books.*
         FROM books
         JOIN authors ON books.book_id = authors.book_id
         WHERE authors.author = $1
     `;
-    const values = [author];
+        const values = [author];
 
-    pool.query(theQuery, values)
-        .then((result) => {
-            if (result.rowCount > 0) {
-                response.send({
-                    books: result.rows.map(formatKeep),
+        pool.query(theQuery, values)
+            .then((result) => {
+                if (result.rowCount > 0) {
+                    response.send({
+                        books: result.rows.map(formatKeep),
+                    });
+                } else {
+                    response.status(404).send({
+                        message: 'Author not found',
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error('DB Query error on GET /author/:author');
+                console.error(error);
+                response.status(500).send({
+                    message: 'server error - contact support',
                 });
-            } else {
-                response.status(404).send({
-                    message: 'Author not found',
-                });
-            }
-        })
-        .catch((error) => {
-            console.error('DB Query error on GET /author/:author');
-            console.error(error);
-            response.status(500).send({
-                message: 'server error - contact support',
             });
-        });
-});
+    }
+);
 
 /**
  * @api {get} /books/isbn/:isbn Retrieve a book by ISBN
@@ -247,4 +310,291 @@ booksRouter.get(
     }
 );
 
+/**
+ * @api {get} /books Get books within an average rating range
+ *
+ * @apiDescription Request to get books whose ratings fall in a range of average ratings (both minimum and maximum average ratings are inclusive)
+ *
+ * @apiName GetBooksByAvgRating
+ * @apiGroup Books
+ *
+ * @apiQuery {Number{1.0-5.0}} [minRating=1.0] Minimum average rating (inclusive)
+ * @apiQuery {Number{1.0-5.0}} [maxRating=5.0] Maximum average rating (inclusive)
+ *
+ * @apiSuccess {Object[]} books List of books matching the rating range
+ * @apiSuccess {Number} books.book_id ID number of the book
+ * @apiSuccess {String} books.isbn13 ISBN-13 identifier
+ * @apiSuccess {Number} books.original_publication_year Original publication year of the book
+ * @apiSuccess {String} books.original_title Original title of the book
+ * @apiSuccess {String} books.title Title of the book
+ * @apiSuccess {String} books.image_url URL for image for the book
+ * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ *
+ * @apiError (400: Invalid or missing Rating Range) {String} message "Invalid or missing Rating Range - please refer to documentation"
+ * @apiError (404: No books found in range) {String} message "No books found in range"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
+booksRouter.get(
+    '/',
+    mwValidAvgRatingRange,
+    async (request: Request, response: Response) => {
+        const minRating: number =
+            parseFloat(request.query.minRating as string) || 1.0;
+        const maxRating: number =
+            parseFloat(request.query.maxRating as string) || 5.0;
+
+        const theQuery = `
+        SELECT books.*
+        FROM books
+        JOIN ratings ON books.book_id = ratings.book_id
+        WHERE 
+            (
+                (ratings_1::float + 2 * ratings_2::float + 3 * ratings_3::float + 4 * ratings_4::float + 5 * ratings_5::float) 
+                / (ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5) 
+            )
+            BETWEEN $1 AND $2 
+        `;
+
+        const values = [minRating, maxRating];
+
+        pool.query(theQuery, values)
+            .then((result) => {
+                if (result.rowCount > 0) {
+                    response.send({
+                        books: result.rows.map(formatKeep),
+                    });
+                } else {
+                    response.status(404).send({
+                        message: 'No books found in range',
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error('DB Query error on GET');
+                console.error(error);
+                response.status(500).send({
+                    message: 'server error - contact support',
+                });
+            });
+    }
+);
+
+/**
+ * @api {patch} /isbn/:isbn/:numRatings Update rating count for a specific rating level
+ *
+ * @apiDescription Request to edit the number of ratings that a certain book has under a certain rating level.
+ *
+ * @apiName PatchBookRatingCount
+ * @apiGroup Books
+ *
+ * @apiParam {String} isbn ISBN-13 number (10–13 digits).
+ * @apiParam {Number} numRatings Number of ratings to set for the given rating level
+ *
+ * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
+ *
+ * @apiSuccess {Object[]} books List of books matching the rating range
+ * @apiSuccess {Number} books.book_id ID number of the book
+ * @apiSuccess {String} books.isbn13 ISBN-13 identifier
+ * @apiSuccess {Number} books.original_publication_year Original publication year of the book
+ * @apiSuccess {String} books.original_title Original title of the book
+ * @apiSuccess {String} books.title Title of the book
+ * @apiSuccess {String} books.image_url URL for image for the book
+ * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ *
+ * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
+ * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
+ * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
+ * @apiError (404: Book not found) {String} message "Book not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
+booksRouter.patch(
+    '/isbn/:isbn/:numRatings',
+    mwValidISBN,
+    mwValidNumberOfRatings,
+    mwValidRating,
+    async (request: Request, response: Response) => {
+        const isbn = BigInt(request.params.isbn);
+        const numRatings: number = parseInt(
+            request.params.numRatings as string
+        );
+        const rating: number = parseInt(request.query.rating as string);
+        const rateLevel: string = 'ratings_' + rating;
+
+        const theQuery = `
+        UPDATE ratings
+        SET ${rateLevel} = $1
+        FROM books
+        WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
+        RETURNING books.*
+        `;
+
+        const values = [numRatings, isbn];
+
+        pool.query(theQuery, values)
+            .then((result) => {
+                if (result.rowCount == 1) {
+                    response.send({
+                        books: result.rows.map(formatKeep),
+                    });
+                } else {
+                    response.status(404).send({
+                        message: 'Book not found',
+                    });
+                }
+            })
+            .catch((error) => {
+                console.error('DB Query error on PATCH ratings');
+                console.error(error);
+                response.status(500).send({
+                    message: 'server error - contact support',
+                });
+            });
+    }
+);
+
+/**
+ * @api {patch} /isbn/:isbn/:numRatings/incRating Increment rating count for a specific rating level
+ *
+ * @apiDescription Request to increment the number of ratings that a certain book has under a certain rating level by 1. If the query parameter for the rating level is given as a float, it will be parsed as an integer.
+ *
+ * @apiName PatchIncrementBookRatingCount
+ * @apiGroup Books
+ *
+ * @apiParam {String} isbn ISBN-13 number (10–13 digits).
+ * @apiParam {Number} numRatings Number of ratings to set for the given rating level
+ *
+ * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
+ *
+ * @apiSuccess {Object[]} books List of books matching the rating range
+ * @apiSuccess {Number} books.book_id ID number of the book
+ * @apiSuccess {String} books.isbn13 ISBN-13 identifier
+ * @apiSuccess {Number} books.original_publication_year Original publication year of the book
+ * @apiSuccess {String} books.original_title Original title of the book
+ * @apiSuccess {String} books.title Title of the book
+ * @apiSuccess {String} books.image_url URL for image for the book
+ * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ *
+ * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
+ * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
+ * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
+ * @apiError (404: Book not found) {String} message "Book not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
+booksRouter.patch(
+    '/isbn/:isbn/:numRatings/incRating',
+    mwValidISBN,
+    mwValidNumberOfRatings,
+    mwValidRating,
+    async (request: Request, response: Response) => {
+        const isbn = BigInt(request.params.isbn);
+        const numRatings: number = parseInt(
+            request.params.numRatings as string
+        );
+        const rating: number = parseInt(request.query.rating as string);
+        const rateLevel: string = 'ratings_' + rating;
+
+        try {
+            const theQuery = `
+            UPDATE ratings
+            SET ${rateLevel} = $1
+            FROM books
+            WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
+            RETURNING books.*
+            `;
+
+            const values = [numRatings + 1, isbn];
+
+            const result = await pool.query(theQuery, values);
+
+            if (result.rowCount == 1) {
+                response.send({
+                    book: result.rows.map(formatKeep),
+                });
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
+                });
+            }
+        } catch (error) {
+            console.error('DB Query error on PATCH ratings');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
+            });
+        }
+    }
+);
+
+/**
+ * @api {patch} /isbn/:isbn/:numRatings/decRating Decrement rating count for a specific rating level
+ *
+ * @apiDescription Request to decrement the number of ratings that a certain book has under a certain rating level by 1. If the query parameter for the rating level is given as a float, it will be parsed as an integer.
+ *
+ * @apiName PatchDecrementBookRatingCount
+ * @apiGroup Books
+ *
+ * @apiParam {String} isbn ISBN-13 number (10–13 digits).
+ * @apiParam {Number} numRatings Number of ratings to set for the given rating level
+ *
+ * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
+ *
+ * @apiSuccess {Object[]} books List of books matching the rating range
+ * @apiSuccess {Number} books.book_id ID number of the book
+ * @apiSuccess {String} books.isbn13 ISBN-13 identifier
+ * @apiSuccess {Number} books.original_publication_year Original publication year of the book
+ * @apiSuccess {String} books.original_title Original title of the book
+ * @apiSuccess {String} books.title Title of the book
+ * @apiSuccess {String} books.image_url URL for image for the book
+ * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ *
+ * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
+ * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
+ * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
+ * @apiError (404: Book not found) {String} message "Book not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
+booksRouter.patch(
+    '/isbn/:isbn/:numRatings/decRating',
+    mwValidISBN,
+    mwValidNumberOfRatings,
+    mwValidRating,
+    async (request: Request, response: Response) => {
+        const isbn = BigInt(request.params.isbn);
+        const numRatings: number = parseInt(
+            request.params.numRatings as string
+        );
+        const rating: number = parseInt(request.query.rating as string);
+        const rateLevel: string = 'ratings_' + rating;
+
+        try {
+            const theQuery = `
+            UPDATE ratings
+            SET ${rateLevel} = $1
+            FROM books
+            WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
+            RETURNING books.*
+            `;
+
+            const values = [numRatings - 1, isbn];
+
+            const result = await pool.query(theQuery, values);
+
+            if (result.rowCount == 1) {
+                response.send({
+                    book: result.rows.map(formatKeep),
+                });
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
+                });
+            }
+        } catch (error) {
+            console.error('DB Query error on PATCH ratings');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
+            });
+        }
+    }
+);
 export { booksRouter };
