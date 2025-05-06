@@ -18,7 +18,7 @@ interface BookWithAuthors {
     image_url: string | null;
     small_image_url: string | null;
     authors: string; // comma-separated list
-  }
+}
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -419,38 +419,41 @@ booksRouter.get('/', async (request: Request, response: Response) => {
  * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/age', async (req: Request, res: Response) => {
-        if (!req.query.order) {
-            return res.status(400).json({ // return to stop the rest of code from running
-                error: 'Missing order query parameter. It must be "old" or "new"'
-            });
-        }
+    if (!req.query.order) {
+        return res.status(400).json({
+            // return to stop the rest of code from running
+            error: 'Missing order query parameter. It must be "old" or "new"',
+        });
+    }
 
-        const order: string = typeof req.query.order === 'string' ? 
-            (req.query.order as string).toLowerCase() : '';
-        const limit: number = parseInt(req.query.limit as string) || 20; // default limit of books is 20
-        const page: number = parseInt(req.query.page as string) || 1; // default page number is 1
+    const order: string =
+        typeof req.query.order === 'string'
+            ? (req.query.order as string).toLowerCase()
+            : '';
+    const limit: number = parseInt(req.query.limit as string) || 20; // default limit of books is 20
+    const page: number = parseInt(req.query.page as string) || 1; // default page number is 1
 
-        if (order !== 'old' && order !== 'new') {
-            return res.status(400).json({
-                error: 'Invalid order query parameter. It must be "old" or "new"'
-            });
-        }
-        if (limit <= 0 || limit > 200) {
-            return res.status(400).json({
-                error: 'Invalid limit query parameter. It must be zero or greater and less than 200.'
-            });
-        }
-        if (page <= 0 || page > 100) {
-            return res.status(400).json({
-                error: 'Invalid page query parameter. It must be zero or greater and less than 100.'
-            });
-        }
+    if (order !== 'old' && order !== 'new') {
+        return res.status(400).json({
+            error: 'Invalid order query parameter. It must be "old" or "new"',
+        });
+    }
+    if (limit <= 0 || limit > 200) {
+        return res.status(400).json({
+            error: 'Invalid limit query parameter. It must be zero or greater and less than 200.',
+        });
+    }
+    if (page <= 0 || page > 100) {
+        return res.status(400).json({
+            error: 'Invalid page query parameter. It must be zero or greater and less than 100.',
+        });
+    }
 
-        const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
-        const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
+    const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
+    const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
 
-        try {
-            const insertQuery: string = `
+    try {
+        const insertQuery: string = `
                 SELECT 
                     b.book_id,
                     b.isbn13,
@@ -468,24 +471,26 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
                 OFFSET $2
             `;
 
-            const values = [limit, offset];
+        const values = [limit, offset];
 
-            const result: QueryResult<BookWithAuthors> = await pool.query(insertQuery, values);
+        const result: QueryResult<BookWithAuthors> = await pool.query(
+            insertQuery,
+            values
+        );
 
-            if (result.rowCount === 0) {
-                return res.status(200).json({ books: [] });
-            }
-            
-            res.status(200).json({ books: result.rows});
-        } catch (error) {
-            console.error('Database query error on GET /books/age');
-            console.error(error);
-            res.status(500).send({
-                message: 'server error - contact support',
-            });
+        if (result.rowCount === 0) {
+            return res.status(200).json({ books: [] });
         }
+
+        res.status(200).json({ books: result.rows });
+    } catch (error) {
+        console.error('Database query error on GET /books/age');
+        console.error(error);
+        res.status(500).send({
+            message: 'server error - contact support',
+        });
     }
-);
+});
 
 /*
  * @api {get} /books Get books within an average rating range
@@ -774,5 +779,74 @@ booksRouter.patch(
         }
     }
 );
+
+/**
+ * @api {get} /books/title/:title Fuzzy search books by title
+ * @apiName GetBooksByTitle
+ * @apiGroup Books
+ * @apiPermission authenticated
+ *
+ * @apiParam {String} title A fuzzy or partial book title (can be misspelled).
+ *
+ * @apiDescription
+ * Returns a list of books whose titles closely match the provided input using trigram similarity.
+ * Useful for cases where the title is mistyped or partially remembered.
+ *
+ * @apiExample {curl} Example usage:
+ *     curl -X GET http://localhost:4000/c/books/title/name%20of%20wind \
+ *     -H "Authorization: Bearer {accessToken}"
+ *
+ * @apiSuccess {Object[]} books List of matched books.
+ * @apiSuccess {Number} books.book_id Book ID.
+ * @apiSuccess {BigInt} books.isbn13 ISBN-13 number.
+ * @apiSuccess {Number} books.original_publication_year Year of publication.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {String} books.image_url Link to the large image of the book.
+ * @apiSuccess {String} books.small_image_url Link to the small image of the book.
+ *
+ * @apiSuccessExample {json} Success Response:
+ * HTTP/1.1 200 OK
+ * {
+ *   "books": [
+ *     {
+ *       "book_id": 123,
+ *       "isbn13": 9781234567897,
+ *       "original_publication_year": 2007,
+ *       "original_title": "The Name of the Wind",
+ *       "title": "Name of the Wind",
+ *       "image_url": "http://example.com/large.jpg",
+ *       "small_image_url": "http://example.com/small.jpg"
+ *     }
+ *   ]
+ * }
+ *
+ * @apiError (400: Invalid Title) {String} message "Missing or invalid title parameter"
+ * @apiError (500: Server Error) {String} message "server error - contact support"
+ */
+booksRouter.get('/title/:title', async (req: Request, res: Response) => {
+    const { title } = req.params;
+
+    if (!title || title.trim() === '') {
+        return res
+            .status(400)
+            .json({ message: 'Missing or invalid title parameter' });
+    }
+
+    try {
+        const searchQuery = `
+            SELECT * FROM books
+            WHERE title % $1
+            ORDER BY similarity(title, $1) DESC
+            LIMIT 10;
+        `;
+        const result = await pool.query(searchQuery, [title]);
+
+        res.status(200).json({ books: result.rows });
+    } catch (error) {
+        console.error('DB error on GET /title/:title', error);
+        res.status(500).json({ message: 'server error - contact support' });
+    }
+});
 
 export { booksRouter };
