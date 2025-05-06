@@ -100,7 +100,6 @@ registerRouter.post(
     (request: Request, response: Response, next: NextFunction) => {
         //Verify that the caller supplied all the parameters
         //In js, empty strings or null values evaluate to false
-        console.log('Register route hit!');
         if (
             isStringProvided(request.body.firstname) &&
             isStringProvided(request.body.lastname) &&
