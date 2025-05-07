@@ -19,6 +19,7 @@ interface BookWithAuthors {
     small_image_url: string | null;
     authors: string; // comma-separated list
 }
+<<<<<<< HEAD
 
 interface IRatings {
     average: number;
@@ -29,6 +30,8 @@ interface IRatings {
     rating_4: number;
     rating_5: number;
 }
+=======
+>>>>>>> origin/dev
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -788,5 +791,74 @@ booksRouter.patch(
         }
     }
 );
+
+/**
+ * @api {get} /books/title/:title Fuzzy search books by title
+ * @apiName GetBooksByTitle
+ * @apiGroup Books
+ * @apiPermission authenticated
+ *
+ * @apiParam {String} title A fuzzy or partial book title (can be misspelled).
+ *
+ * @apiDescription
+ * Returns a list of books whose titles closely match the provided input using trigram similarity.
+ * Useful for cases where the title is mistyped or partially remembered.
+ *
+ * @apiExample {curl} Example usage:
+ *     curl -X GET http://localhost:4000/c/books/title/name%20of%20wind \
+ *     -H "Authorization: Bearer {accessToken}"
+ *
+ * @apiSuccess {Object[]} books List of matched books.
+ * @apiSuccess {Number} books.book_id Book ID.
+ * @apiSuccess {BigInt} books.isbn13 ISBN-13 number.
+ * @apiSuccess {Number} books.original_publication_year Year of publication.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {String} books.image_url Link to the large image of the book.
+ * @apiSuccess {String} books.small_image_url Link to the small image of the book.
+ *
+ * @apiSuccessExample {json} Success Response:
+ * HTTP/1.1 200 OK
+ * {
+ *   "books": [
+ *     {
+ *       "book_id": 123,
+ *       "isbn13": 9781234567897,
+ *       "original_publication_year": 2007,
+ *       "original_title": "The Name of the Wind",
+ *       "title": "Name of the Wind",
+ *       "image_url": "http://example.com/large.jpg",
+ *       "small_image_url": "http://example.com/small.jpg"
+ *     }
+ *   ]
+ * }
+ *
+ * @apiError (400: Invalid Title) {String} message "Missing or invalid title parameter"
+ * @apiError (500: Server Error) {String} message "server error - contact support"
+ */
+booksRouter.get('/title/:title', async (req: Request, res: Response) => {
+    const { title } = req.params;
+
+    if (!title || title.trim() === '') {
+        return res
+            .status(400)
+            .json({ message: 'Missing or invalid title parameter' });
+    }
+
+    try {
+        const searchQuery = `
+            SELECT * FROM books
+            WHERE title % $1
+            ORDER BY similarity(title, $1) DESC
+            LIMIT 10;
+        `;
+        const result = await pool.query(searchQuery, [title]);
+
+        res.status(200).json({ books: result.rows });
+    } catch (error) {
+        console.error('DB error on GET /title/:title', error);
+        res.status(500).json({ message: 'server error - contact support' });
+    }
+});
 
 export { booksRouter };

@@ -5,7 +5,9 @@ import { changePasswordRouter } from './changepassword';
 
 const authRoutes: Router = express.Router();
 
-// Use all auth routes
-authRoutes.use(signinRouter, registerRouter, changePasswordRouter);
+// Explicitly assign each router to its base path
+authRoutes.use('/login', signinRouter);
+authRoutes.use('/register', registerRouter);
+authRoutes.use('/changePassword', changePasswordRouter);
 
 export { authRoutes };

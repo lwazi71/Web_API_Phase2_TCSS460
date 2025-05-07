@@ -95,7 +95,7 @@ const emailMiddlewareCheck = (
  *
  */
 registerRouter.post(
-    '/register',
+    '/',
     emailMiddlewareCheck, // these middleware functions may be defined elsewhere!
     (request: Request, response: Response, next: NextFunction) => {
         //Verify that the caller supplied all the parameters
