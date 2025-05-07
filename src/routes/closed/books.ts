@@ -18,7 +18,17 @@ interface BookWithAuthors {
     image_url: string | null;
     small_image_url: string | null;
     authors: string; // comma-separated list
-  }
+}
+
+interface IRatings {
+    average: number;
+    count: number;
+    rating_1: number;
+    rating_2: number;
+    rating_3: number;
+    rating_4: number;
+    rating_5: number;
+}
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -419,38 +429,41 @@ booksRouter.get('/', async (request: Request, response: Response) => {
  * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/age', async (req: Request, res: Response) => {
-        if (!req.query.order) {
-            return res.status(400).json({ // return to stop the rest of code from running
-                error: 'Missing order query parameter. It must be "old" or "new"'
-            });
-        }
+    if (!req.query.order) {
+        return res.status(400).json({
+            // return to stop the rest of code from running
+            error: 'Missing order query parameter. It must be "old" or "new"',
+        });
+    }
 
-        const order: string = typeof req.query.order === 'string' ? 
-            (req.query.order as string).toLowerCase() : '';
-        const limit: number = parseInt(req.query.limit as string) || 20; // default limit of books is 20
-        const page: number = parseInt(req.query.page as string) || 1; // default page number is 1
+    const order: string =
+        typeof req.query.order === 'string'
+            ? (req.query.order as string).toLowerCase()
+            : '';
+    const limit: number = parseInt(req.query.limit as string) || 20; // default limit of books is 20
+    const page: number = parseInt(req.query.page as string) || 1; // default page number is 1
 
-        if (order !== 'old' && order !== 'new') {
-            return res.status(400).json({
-                error: 'Invalid order query parameter. It must be "old" or "new"'
-            });
-        }
-        if (limit <= 0 || limit > 200) {
-            return res.status(400).json({
-                error: 'Invalid limit query parameter. It must be zero or greater and less than 200.'
-            });
-        }
-        if (page <= 0 || page > 100) {
-            return res.status(400).json({
-                error: 'Invalid page query parameter. It must be zero or greater and less than 100.'
-            });
-        }
+    if (order !== 'old' && order !== 'new') {
+        return res.status(400).json({
+            error: 'Invalid order query parameter. It must be "old" or "new"',
+        });
+    }
+    if (limit <= 0 || limit > 200) {
+        return res.status(400).json({
+            error: 'Invalid limit query parameter. It must be zero or greater and less than 200.',
+        });
+    }
+    if (page <= 0 || page > 100) {
+        return res.status(400).json({
+            error: 'Invalid page query parameter. It must be zero or greater and less than 100.',
+        });
+    }
 
-        const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
-        const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
+    const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
+    const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
 
-        try {
-            const insertQuery: string = `
+    try {
+        const insertQuery: string = `
                 SELECT 
                     b.book_id,
                     b.isbn13,
@@ -468,24 +481,26 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
                 OFFSET $2
             `;
 
-            const values = [limit, offset];
+        const values = [limit, offset];
 
-            const result: QueryResult<BookWithAuthors> = await pool.query(insertQuery, values);
+        const result: QueryResult<BookWithAuthors> = await pool.query(
+            insertQuery,
+            values
+        );
 
-            if (result.rowCount === 0) {
-                return res.status(200).json({ books: [] });
-            }
-            
-            res.status(200).json({ books: result.rows});
-        } catch (error) {
-            console.error('Database query error on GET /books/age');
-            console.error(error);
-            res.status(500).send({
-                message: 'server error - contact support',
-            });
+        if (result.rowCount === 0) {
+            return res.status(200).json({ books: [] });
         }
+
+        res.status(200).json({ books: result.rows });
+    } catch (error) {
+        console.error('Database query error on GET /books/age');
+        console.error(error);
+        res.status(500).send({
+            message: 'server error - contact support',
+        });
     }
-);
+});
 
 /*
  * @api {get} /books Get books within an average rating range
@@ -597,35 +612,34 @@ booksRouter.patch(
         const rating: number = parseInt(request.query.rating as string);
         const rateLevel: string = 'ratings_' + rating;
 
-        const theQuery = `
-        UPDATE ratings
-        SET ${rateLevel} = $1
-        FROM books
-        WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
-        RETURNING books.*
-        `;
+        try {
+            const theQuery = `
+                UPDATE ratings
+                SET ${rateLevel} = $1
+                FROM books
+                WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
+                RETURNING books.*
+            `;
 
-        const values = [numRatings, isbn];
+            const values = [numRatings, isbn];
 
-        pool.query(theQuery, values)
-            .then((result) => {
-                if (result.rowCount == 1) {
-                    response.send({
-                        books: result.rows.map(formatKeep),
-                    });
-                } else {
-                    response.status(404).send({
-                        message: 'Book not found',
-                    });
-                }
-            })
-            .catch((error) => {
-                console.error('DB Query error on PATCH ratings');
-                console.error(error);
-                response.status(500).send({
-                    message: 'server error - contact support',
+            const result = await pool.query(theQuery, values);
+
+            if (result.rowCount == 1) {
+                const updatedRatings: IRatings = result.rows[0];
+                response.status(200).send(updatedRatings);
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
                 });
+            }
+        } catch (error) {
+            console.error('DB Query error on PATCH ratings');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
             });
+        }
     }
 );
 
