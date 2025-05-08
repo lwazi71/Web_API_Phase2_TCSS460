@@ -450,7 +450,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
         const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
 
         try {
-            const insertQuery: string = `
+            const query: string = `
                 SELECT 
                     b.book_id,
                     b.isbn13,
@@ -470,7 +470,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
 
             const values = [limit, offset];
 
-            const result: QueryResult<BookWithAuthors> = await pool.query(insertQuery, values);
+            const result: QueryResult<BookWithAuthors> = await pool.query(query, values);
 
             if (result.rowCount === 0) {
                 return res.status(200).json({ books: [] });
@@ -481,7 +481,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
             console.error('Database query error on GET /books/age');
             console.error(error);
             res.status(500).send({
-                message: 'server error - contact support',
+                error: 'server error - contact support',
             });
         }
     }
@@ -770,6 +770,114 @@ booksRouter.patch(
             console.error(error);
             response.status(500).send({
                 message: 'server error - contact support',
+            });
+        }
+    }
+);
+
+/**
+ * @api {get} /books/:bookId/image Retrieve image of a book
+ * @apiName GetBookImage
+ * @apiGroup Books
+ *
+ * @apiParam {Number} bookId Book ID (must be a positive number).
+ *
+ * @apiSuccess {String} image image URL for the given book.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "image": "http://example.com/full-image.jpg"
+ *    }
+ *
+ * @apiError (400) InvalidBookIdParameter "Invalid book ID parameter. It must be a positive number."
+ * @apiError (404) ImageNotFound "Image not found for given book ID."
+ * @apiError (500) ServerError "server error - contact support"
+ */
+booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
+        const bookId: number = parseInt(req.params.bookId);
+
+        if (isNaN(bookId) || bookId <= 0) {
+            return res.status(400).json({
+                error: 'Invalid book ID parameter. It must be a positive number.'
+            });
+        }
+
+        try {
+            const query: string = `
+                SELECT image_url
+                FROM books
+                WHERE book_id = $1
+            `;
+
+            const result = await pool.query(query, [bookId]);
+
+            if (result.rowCount == 0 || !result.rows[0].image_url) {
+                return res.status(404).json({
+                    error: 'Image not found for given book ID.'
+                });
+            }
+        
+            res.status(200).json({ image: result.rows[0].image_url});
+        } catch (error) {
+            console.error('Database query error on GET /books/:bookId/image');
+            console.error(error);
+            res.status(500).send({
+                error: 'server error - contact support',
+            });
+        }
+    }
+);
+
+/**
+ * @api {get} /books/:bookId/small-image Retrieve small image of a book
+ * @apiName GetBookSmallImage
+ * @apiGroup Books
+ *
+ * @apiParam {Number} bookId Book ID (must be a positive number).
+ *
+ * @apiSuccess {String} image Small image URL for the given book.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "image": "http://example.com/small-image.jpg"
+ *    }
+ *
+ * @apiError (400) InvalidBookIdParameter "Invalid book ID parameter. It must be a positive number."
+ * @apiError (404) SmallImageNotFound "Small image not found for given book ID."
+ * @apiError (500) ServerError "server error - contact support"
+ */
+booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
+        const bookId: number = parseInt(req.params.bookId);
+
+        if (isNaN(bookId) || bookId <= 0) {
+            return res.status(400).json({
+                error: 'Invalid book ID parameter. It must be a positive number.'
+            });
+        }
+
+        try {
+            const query: string = `
+                SELECT small_image_url
+                FROM books
+                WHERE book_id = $1
+            `;
+
+            const result = await pool.query(query, [bookId]);
+
+            if (result.rowCount === 0 || !result.rows[0].small_image_url) {
+                return res.status(404).json({
+                    error: 'Small image not found for given book ID.'
+                });
+            }
+        
+            res.status(200).json({ image: result.rows[0].small_image_url});
+        } catch (error) {
+            console.error('Database query error on GET /books/:bookId/small-image');
+            console.error(error);
+            res.status(500).send({
+                error: 'server error - contact support',
             });
         }
     }
