@@ -799,7 +799,7 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
 
         if (isNaN(bookId) || bookId <= 0) {
             return res.status(400).json({
-                error: 'Invalid book ID parameter. It must be a positive number.'
+                error: 'Invalid book ID parameter. It must be a number and positive.'
             });
         }
 
@@ -853,7 +853,7 @@ booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
 
         if (isNaN(bookId) || bookId <= 0) {
             return res.status(400).json({
-                error: 'Invalid book ID parameter. It must be a positive number.'
+                error: 'Invalid book ID parameter. It must be a number and positive.'
             });
         }
 
