@@ -519,8 +519,8 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
     }
 });
 
-/*
- * @api {get} /books Get books within an average rating range
+/**
+ * @api {get} /closed/books Get books within an average rating range
  *
  * @apiDescription Request to get books whose ratings fall in a range of average ratings (both minimum and maximum average ratings are inclusive)
  *
@@ -589,40 +589,40 @@ booksRouter.get(
 );
 
 /**
- * @api {patch} /isbn/:isbn/:numRatings Update rating count for a specific rating level
+ * @api {patch} /closed/books/bookid/:bookid/:numRatings Update rating count for a specific rating level
  *
  * @apiDescription Request to edit the number of ratings that a certain book has under a certain rating level.
  *
  * @apiName PatchBookRatingCount
  * @apiGroup Books
  *
- * @apiParam {String} isbn ISBN-13 number (10–13 digits).
+ * @apiParam {String} bookid The book's ID number
  * @apiParam {Number} numRatings Number of ratings to set for the given rating level
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Object[]} books List of books matching the rating range
- * @apiSuccess {Number} books.book_id ID number of the book
- * @apiSuccess {String} books.isbn13 ISBN-13 identifier
- * @apiSuccess {Number} books.original_publication_year Original publication year of the book
- * @apiSuccess {String} books.original_title Original title of the book
- * @apiSuccess {String} books.title Title of the book
- * @apiSuccess {String} books.image_url URL for image for the book
- * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ * @apiSuccess {Number} average The book's average rating
+ * @apiSuccess {Number} count The number of ratings the book has
+ * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
+ * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
+ * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
+ * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
+ * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
  *
- * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
+ *
+ * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
  * @apiError (404: Book not found) {String} message "Book not found"
  * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.patch(
-    '/isbn/:isbn/:numRatings',
-    mwValidISBN,
+    '/bookid/:bookid/:numRatings',
+    mwValidBookID,
     mwValidNumberOfRatings,
     mwValidRating,
     async (request: Request, response: Response) => {
-        const isbn = BigInt(request.params.isbn);
+        const bookid = BigInt(request.params.bookid);
         const numRatings: number = parseInt(
             request.params.numRatings as string
         );
@@ -634,16 +634,21 @@ booksRouter.patch(
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
-                WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
-                RETURNING books.*
+                WHERE ratings.book_id = books.book_id AND books.book_id = $2
+                RETURNING ratings.*
             `;
 
-            const values = [numRatings, isbn];
+            const values = [numRatings, bookid];
 
             const result = await pool.query(theQuery, values);
 
             if (result.rowCount == 1) {
-                const updatedRatings: IRatings = result.rows[0];
+                const { book_id, ...ratings } = result.rows[0];
+                const updatedRatings: IRatings = {
+                    average: calcRatingsAverage(result.rows[0]),
+                    count: calcRatingsCount(result.rows[0]),
+                    ...ratings,
+                };
                 response.status(200).send(updatedRatings);
             } else {
                 response.status(404).send({
@@ -661,7 +666,7 @@ booksRouter.patch(
 );
 
 /**
- * @api {patch} /bookid/:bookid/incRating Increment rating count for a specific rating level
+ * @api {patch} /closed/books/bookid/:bookid/incRating Increment rating count for a specific rating level
  *
  * @apiDescription Request to increment the number of ratings that a certain book has under a certain rating level by 1. If the query parameter for the rating level is given as a float, it will be parsed as an integer.
  *
@@ -672,14 +677,15 @@ booksRouter.patch(
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Object[]} books List of books matching the rating range
- * @apiSuccess {Number} books.book_id ID number of the book
- * @apiSuccess {String} books.isbn13 ISBN-13 identifier
- * @apiSuccess {Number} books.original_publication_year Original publication year of the book
- * @apiSuccess {String} books.original_title Original title of the book
- * @apiSuccess {String} books.title Title of the book
- * @apiSuccess {String} books.image_url URL for image for the book
- * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ * @apiSuccess {Number} average The book's average rating
+ * @apiSuccess {Number} count The number of ratings the book has
+ * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
+ * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
+ * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
+ * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
+ * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ *
+ * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  *
  * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
  * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
@@ -731,11 +737,11 @@ booksRouter.patch(
 
         try {
             const theQuery = `
-            UPDATE ratings
-            SET ${rateLevel} = $1
-            FROM books
-            WHERE ratings.book_id = books.book_id AND books.book_id = $2
-            RETURNING books.*
+                UPDATE ratings
+                SET ${rateLevel} = $1
+                FROM books
+                WHERE ratings.book_id = books.book_id AND books.book_id = $2
+                RETURNING ratings.*
             `;
 
             const values = [currRatings + 1, bookid];
@@ -746,7 +752,13 @@ booksRouter.patch(
                 // response.send({
                 //     book: result.rows.map(formatKeep),
                 // });
-                const updatedRatings: IRatings = result.rows[0];
+                //const updatedRatings: IRatings = result.rows[0];
+                const { book_id, ...ratings } = result.rows[0];
+                const updatedRatings: IRatings = {
+                    average: calcRatingsAverage(result.rows[0]),
+                    count: calcRatingsCount(result.rows[0]),
+                    ...ratings,
+                };
                 response.status(200).send(updatedRatings);
             } else {
                 response.status(404).send({
@@ -792,17 +804,46 @@ booksRouter.patch(
  * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.patch(
-    '/isbn/:isbn/:numRatings/decRating',
+    '/bookid/:bookid/decRating',
     mwValidISBN,
-    mwValidNumberOfRatings,
     mwValidRating,
     async (request: Request, response: Response) => {
-        const isbn = BigInt(request.params.isbn);
-        const numRatings: number = parseInt(
-            request.params.numRatings as string
-        );
+        const bookid = BigInt(request.params.bookid);
         const rating: number = parseInt(request.query.rating as string);
         const rateLevel: string = 'ratings_' + rating;
+        let currRatings;
+
+        try {
+            const ratingQuery = `
+                SELECT ${rateLevel}
+                FROM ratings
+                WHERE ratings.book_id = $1
+            `;
+
+            const numRatings = await pool.query(ratingQuery, [bookid]);
+
+            // const ratingLevel = 'ratings_3';  // This is the field name based on the dynamic query
+            // const numRatingsForLevel = currRatings[ratingLevel];
+            // console.log(numRatingsForLevel);  // This will output: 606158
+            //
+            // bc currRatings = { ratings_3: 606158 }
+
+            if (numRatings.rowCount === 1) {
+                currRatings = numRatings.rows[0][rateLevel];
+                // currRatings = numRatings.rows[0];
+                // currRatings = currRatings[rateLevel];
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
+                });
+            }
+        } catch (error) {
+            console.error('DB Query error on PATCH ratings');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
+            });
+        }
 
         try {
             const theQuery = `
@@ -813,7 +854,7 @@ booksRouter.patch(
             RETURNING books.*
             `;
 
-            const values = [numRatings - 1, isbn];
+            const values = [currRatings - 1, bookid];
 
             const result = await pool.query(theQuery, values);
 
@@ -835,6 +876,27 @@ booksRouter.patch(
         }
     }
 );
+
+function calcRatingsCount(result: QueryResult): number {
+    const count: number =
+        result['ratings_1'] +
+        result['ratings_2'] +
+        result['ratings_3'] +
+        result['ratings_4'] +
+        result['ratings_5'];
+    return count;
+}
+
+function calcRatingsAverage(result: QueryResult): number {
+    const count: number = calcRatingsCount(result);
+    const weightedRatings: number =
+        result['ratings_1'] * 1 +
+        result['ratings_2'] * 2 +
+        result['ratings_3'] * 3 +
+        result['ratings_4'] * 4 +
+        result['ratings_5'] * 5;
+    return parseFloat((weightedRatings / count).toFixed(2));
+}
 
 /**
  * @api {get} /books/title/:title Fuzzy search books by title
