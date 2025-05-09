@@ -61,11 +61,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/books/{{bookId}}/image",
+					"raw": "{{base_url}}/closed/books/{{bookId}}/image",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
+						"closed",
 						"books",
 						"{{bookId}}",
 						"image"
@@ -128,11 +129,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/books/{{bookId}}/small-image",
+					"raw": "{{base_url}}/closed/books/{{bookId}}/small-image",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
+						"closed",
 						"books",
 						"{{bookId}}",
 						"small-image"
@@ -188,11 +190,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/books/{{bookId}}/image",
+					"raw": "{{base_url}}/closed/books/{{bookId}}/image",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
+						"closed",
 						"books",
 						"{{bookId}}",
 						"image"
@@ -248,11 +251,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/books/{{bookId}}/small-image",
+					"raw": "{{base_url}}/closed/books/{{bookId}}/small-image",
 					"host": [
 						"{{base_url}}"
 					],
 					"path": [
+						"closed",
 						"books",
 						"{{bookId}}",
 						"small-image"
