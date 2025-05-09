@@ -244,7 +244,7 @@ messageRouter.get(
  */
 messageRouter.get('/:name', (request: Request, response: Response) => {
     const theQuery = 'SELECT name, message, priority FROM Demo WHERE name = $1';
-    let values = [request.params.name];
+    const values = [request.params.name];
 
     pool.query(theQuery, values)
         .then((result) => {
