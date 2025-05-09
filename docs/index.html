@@ -1,25 +1,26 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>TCSS 460 Rest Web API</title>
   <meta name="description" content="TCSS 460 Second Node/Express Rest Web API, includes DB and Auth examples">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <link href="assets/bootstrap.min.css?v=1746569429669" rel="stylesheet" media="screen">
-  <link href="assets/prism.css?v=1746569429669" rel="stylesheet" />
-  <link href="assets/prism-toolbar.css?v=1746569429669" rel="stylesheet" />
-  <link href="assets/prism-diff-highlight.css?v=1746569429669" rel="stylesheet" />
-  <link href="assets/main.css?v=1746569429669" rel="stylesheet" media="screen, print">
-  <link href="assets/favicon.ico?v=1746569429669" rel="icon" type="image/x-icon">
-  <link href="assets/apple-touch-icon.png?v=1746569429669" rel="apple-touch-icon" sizes="180x180">
-  <link href="assets/favicon-32x32.png?v=1746569429669" rel="icon" type="image/png" sizes="32x32">
-  <link href="assets/favicon-16x16.png?v=1746569429669" rel="icon" type="image/png" sizes="16x16">
+  <link href="assets/bootstrap.min.css?v=1746807068821" rel="stylesheet" media="screen">
+  <link href="assets/prism.css?v=1746807068821" rel="stylesheet" />
+  <link href="assets/prism-toolbar.css?v=1746807068821" rel="stylesheet" />
+  <link href="assets/prism-diff-highlight.css?v=1746807068821" rel="stylesheet" />
+  <link href="assets/main.css?v=1746807068821" rel="stylesheet" media="screen, print">
+  <link href="assets/favicon.ico?v=1746807068821" rel="icon" type="image/x-icon">
+  <link href="assets/apple-touch-icon.png?v=1746807068821" rel="apple-touch-icon" sizes="180x180">
+  <link href="assets/favicon-32x32.png?v=1746807068821" rel="icon" type="image/png" sizes="32x32">
+  <link href="assets/favicon-16x16.png?v=1746807068821" rel="icon" type="image/png" sizes="16x16">
 </head>
 
 <body class="container-fluid">
 
-<!-- SIDENAV -->
-<script id="template-sidenav" type="text/x-handlebars-template">
+  <!-- SIDENAV -->
+  <script id="template-sidenav" type="text/x-handlebars-template">
 <nav id="scrollingNav" class="col-sm-3 col-lg-2 sidebar-offcanvas">
   <div class="nav-toggle visible-xs">
     <button type="button" class="btn btn-link" data-toggle="offcanvas">
@@ -53,8 +54,8 @@
 </nav>
 </script>
 
-<!-- PROJECT -->
-<script id="template-project" type="text/x-handlebars-template">
+  <!-- PROJECT -->
+  <script id="template-project" type="text/x-handlebars-template">
   <div class="pull-left">
     <h1>{{name}}</h1>
     {{#if description}}<h2>{{{nl2br description}}}</h2>{{/if}}
@@ -83,19 +84,19 @@
   <div class="clearfix"></div>
 </script>
 
-<script id="template-header" type="text/x-handlebars-template">
+  <script id="template-header" type="text/x-handlebars-template">
   {{#if content}}
     <div id="api-_header" class="show-api-article show-api-_-article">{{{content}}}</div>
   {{/if}}
 </script>
 
-<script id="template-footer" type="text/x-handlebars-template">
+  <script id="template-footer" type="text/x-handlebars-template">
   {{#if content}}
     <div id="api-_footer" class="show-api-article show-api-_-article">{{{content}}}</div>
   {{/if}}
 </script>
 
-<script id="template-generator" type="text/x-handlebars-template">
+  <script id="template-generator" type="text/x-handlebars-template">
   {{#if template.withGenerator}}
     {{#if generator}}
       <div>
@@ -107,7 +108,7 @@
   {{/if}}
 </script>
 
-<script id="template-sections" type="text/x-handlebars-template">
+  <script id="template-sections" type="text/x-handlebars-template">
   <section id="api-{{group}}" class="show-api-group show-api-{{group}}-group {{#if aloneDisplay}} hide{{/if}}">
     <h1 class="color-primary font-weight-bold">{{underscoreToSpace title}}</h1>
     {{#if description}}
@@ -121,7 +122,7 @@
   </section>
 </script>
 
-<script id="template-article" type="text/x-handlebars-template">
+  <script id="template-article" type="text/x-handlebars-template">
   <article id="api-{{article.group}}-{{article.name}}-{{article.version}}" {{#if hidden}}class="hide"{{/if}} data-group="{{article.group}}" data-name="{{article.name}}" data-version="{{article.version}}">
     <div class="pull-left">
       <h1><span class="color-primary">{{underscoreToSpace article.groupTitle}}</span>{{#if article.title}} <span class="text-muted">|</span> {{article.title}}{{/if}}</h1>
@@ -211,7 +212,7 @@
   </article>
 </script>
 
-<script id="template-article-query-block" type="text/x-handlebars-template">
+  <script id="template-article-query-block" type="text/x-handlebars-template">
   {{#if article.query}}
     <h2>{{__ "Query Parameter(s)"}}</h2>
     <table>
@@ -257,7 +258,7 @@
   {{/if}}
 </script>
 
-<script id="template-article-body-block" type="text/x-handlebars-template">
+  <script id="template-article-body-block" type="text/x-handlebars-template">
   {{#if article.body}}
     <h2>{{__ "Request Body"}}</h2>
     <table>
@@ -309,7 +310,7 @@
   {{/if}}
 </script>
 
-<script id="template-article-param-block" type="text/x-handlebars-template">
+  <script id="template-article-param-block" type="text/x-handlebars-template">
   {{#if params}}
     {{#each params.fields}}
       <h2>{{__ @key}}</h2>
@@ -379,7 +380,7 @@
   {{/if}}
 </script>
 
-<script id="template-article-sample-request" type="text/x-handlebars-template">
+  <script id="template-article-sample-request" type="text/x-handlebars-template">
   {{#if article.sampleRequest}}
     <div class="well">
       <h3>{{__ "Send a Sample Request"}}</h3>
@@ -602,7 +603,7 @@
   {{/if}}
 </script>
 
-<script id="template-compare-article" type="text/x-handlebars-template">
+  <script id="template-compare-article" type="text/x-handlebars-template">
   <article id="api-{{article.group}}-{{article.name}}-{{article.version}}" {{#if hidden}}class="hide"{{/if}} data-group="{{article.group}}" data-name="{{article.name}}" data-version="{{article.version}}" data-compare-version="{{compare.version}}">
     <div class="pull-left">
       <h1>{{underscoreToSpace article.groupTitle}} | {{{showDiff article.title compare.title}}}</h1>
@@ -719,7 +720,7 @@
   </article>
 </script>
 
-<script id="template-article-compare-permission" type="text/x-handlebars-template">
+  <script id="template-article-compare-permission" type="text/x-handlebars-template">
   <p>
   {{__ "Permission:"}}
   {{#each_compare_list_field article.permission compare.permission field="name"}}
@@ -788,7 +789,7 @@
   </p>
 </script>
 
-<script id="template-article-compare-param-block" type="text/x-handlebars-template">
+  <script id="template-article-compare-param-block" type="text/x-handlebars-template">
   {{#if source}}
     {{#each_compare_keys source.fields compare.fields}}
       {{#if typeSame}}
@@ -898,7 +899,7 @@
   {{/if}}
 </script>
 
-<script id="template-article-compare-query-block" type="text/x-handlebars-template">
+  <script id="template-article-compare-query-block" type="text/x-handlebars-template">
   {{#if article.query}}
     <h2>{{__ "Query Parameter(s)"}}</h2>
     <table class="table table-hover">
@@ -916,7 +917,7 @@
   {{/if}}
 </script>
 
-<script id="template-article-compare-body-block" type="text/x-handlebars-template">
+  <script id="template-article-compare-body-block" type="text/x-handlebars-template">
   {{#if article.body}}
     <h2>{{__ "Request Body"}}</h2>
     <table class="table table-hover">
@@ -934,7 +935,7 @@
   {{/if}}
 </script>
 
-<script id="template-article-compare-param-block-body" type="text/x-handlebars-template">
+  <script id="template-article-compare-param-block-body" type="text/x-handlebars-template">
   <tbody>
     {{#each_compare_field source compare}}
       {{#if typeSame}}
@@ -1014,34 +1015,44 @@
   </tbody>
 </script>
 
-<div class="container-fluid">
-  <div class="row row-offcanvas row-offcanvas-left">
-    <div id="sidenav" class="col-sm-3 col-lg-2"></div>
-    <div id="content" class="col-sm-9 col-lg-10">
-      <div id="project"></div>
-      <div id="header"></div>
-      <div id="sections"></div>
-      <div id="footer"></div>
-      <div id="generator"></div>
+  <div class="container-fluid">
+    <div class="row row-offcanvas row-offcanvas-left">
+      <div id="sidenav" class="col-sm-3 col-lg-2"></div>
+      <div id="content" class="col-sm-9 col-lg-10">
+        <div id="project"></div>
+        <div id="header"></div>
+        <div id="sections"></div>
+        <div id="footer"></div>
+        <div id="generator"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="loader">
-  <div class="spinner">
-    <div class="spinner-container container1">
-      <div class="circle1"></div><div class="circle2"></div><div class="circle3"></div><div class="circle4"></div>
+  <div id="loader">
+    <div class="spinner">
+      <div class="spinner-container container1">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+      </div>
+      <div class="spinner-container container2">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+      </div>
+      <div class="spinner-container container3">
+        <div class="circle1"></div>
+        <div class="circle2"></div>
+        <div class="circle3"></div>
+        <div class="circle4"></div>
+      </div>
+      <p>Loading...</p>
     </div>
-    <div class="spinner-container container2">
-      <div class="circle1"></div><div class="circle2"></div><div class="circle3"></div><div class="circle4"></div>
-    </div>
-    <div class="spinner-container container3">
-      <div class="circle1"></div><div class="circle2"></div><div class="circle3"></div><div class="circle4"></div>
-    </div>
-    <p>Loading...</p>
   </div>
-</div>
 
-<script src="assets/main.bundle.js?v=1746569429669"></script>
+  <script src="assets/main.bundle.js?v=1746807068821"></script>
 </body>
+
 </html>
