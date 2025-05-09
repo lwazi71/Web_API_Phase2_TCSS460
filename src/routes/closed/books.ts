@@ -3,22 +3,12 @@ import express, { NextFunction, Request, Response, Router } from 'express';
 // Access the connection to Postgres Database
 import { pool, validationFunctions } from '../../core/utilities';
 import { QueryResult } from 'pg';
+import './http_responses';
 
 const booksRouter: Router = express.Router();
 
 const isStringProvided = validationFunctions.isStringProvided;
 const isNumberProvided = validationFunctions.isNumberProvided;
-
-interface BookWithAuthors {
-    book_id: number;
-    isbn13: number;
-    original_publication_year: number;
-    original_title: string | null;
-    title: string;
-    image_url: string | null;
-    small_image_url: string | null;
-    authors: string; // comma-separated list
-  }
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -386,38 +376,57 @@ booksRouter.get('/', async (request: Request, response: Response) => {
  * @apiQuery {Number{1-100}} [page=1] Optional. Page number for pagination.
  *
  * @apiSuccess {Object[]} books List of books sorted by publication year.
- * @apiSuccess {Number} books.book_id Book ID.
- * @apiSuccess {String} books.isbn13 ISBN-13.
- * @apiSuccess {Number} books.original_publication_year Year the book was originally published.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
  * @apiSuccess {String} books.original_title Original title of the book.
  * @apiSuccess {String} books.title Title of the book.
- * @apiSuccess {String} books.image_url Full-size image URL.
- * @apiSuccess {String} books.small_image_url Small image URL.
- * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
  *
  * @apiSuccessExample {json} Success-Response:
  *    HTTP/1.1 200 OK
  *    {
  *      "books": [
  *        {
- *          "book_id": 12345,
- *          "isbn13": "9781234567897",
- *          "original_publication_year": 1999,
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
  *          "original_title": "Example Title",
  *          "title": "Example Title Full",
- *          "image_url": "http://example.com/large.jpg",
- *          "small_image_url": "http://example.com/small.jpg",
- *          "authors": "Author One, Author Two"
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
  *        }
  *      ]
  *    }
  *
  * @apiError (400) MissingOrderParameter "Missing order query parameter. It must be 'old' or 'new'"
  * @apiError (400) InvalidOrderParameter "Invalid order query parameter. It must be 'old' or 'new'"
- * @apiError (400) InvalidLimitParameter "Invalid limit query parameter. It must be positive and less than 200."
- * @apiError (400) InvalidPageParameter "Invalid page query parameter. It must be positive and less than 100."
+ * @apiError (400) InvalidLimitParameter "Invalid limit query parameter. It must be zero or greater and less than 200."
+ * @apiError (400) InvalidPageParameter "Invalid page query parameter. It must be zero or greater and less than 100."
  * @apiError (500) ServerError "server error - contact support"
  */
+
 booksRouter.get('/age', async (req: Request, res: Response) => {
         if (!req.query.order) {
             return res.status(400).json({ // return to stop the rest of code from running
@@ -450,33 +459,78 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
         const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
 
         try {
-            const query: string = `
+            const query = `
                 SELECT 
-                    b.book_id,
                     b.isbn13,
                     b.original_publication_year,
                     b.original_title,
                     b.title,
                     b.image_url,
                     b.small_image_url,
-                    STRING_AGG(a.author, ', ') AS authors
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
                 FROM books b
                 JOIN authors a ON b.book_id = a.book_id
-                GROUP BY b.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                GROUP BY b.book_id, r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
                 ORDER BY b.original_publication_year ${orderInSQL}
-                LIMIT $1
-                OFFSET $2
+                LIMIT $1 OFFSET $2
             `;
-
-            const values = [limit, offset];
-
-            const result: QueryResult<BookWithAuthors> = await pool.query(query, values);
-
-            if (result.rowCount === 0) {
-                return res.status(200).json({ books: [] });
-            }
-            
-            res.status(200).json({ books: result.rows});
+    
+            const result = await pool.query(query, [limit, offset]);
+    
+            const books: IBook[] = result.rows.map(row => {
+                const { 
+                    isbn13,
+                    authors,
+                    original_publication_year,
+                    original_title,
+                    title,
+                    image_url,
+                    small_image_url,
+                    ratings_1 = 0,
+                    ratings_2 = 0,
+                    ratings_3 = 0,
+                    ratings_4 = 0,
+                    ratings_5 = 0
+                } = row;
+    
+                const count = ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5;
+                const average = count === 0 ? 0 : (
+                    (1 * ratings_1 +
+                     2 * ratings_2 +
+                     3 * ratings_3 +
+                     4 * ratings_4 +
+                     5 * ratings_5) / count
+                );
+    
+                return {
+                    isbn13: Number(isbn13),
+                    authors,
+                    publication: original_publication_year,
+                    original_title,
+                    title,
+                    ratings: {
+                        average: parseFloat(average.toFixed(2)),
+                        count,
+                        rating_1: ratings_1,
+                        rating_2: ratings_2,
+                        rating_3: ratings_3,
+                        rating_4: ratings_4,
+                        rating_5: ratings_5,
+                    },
+                    icons: {
+                        large: image_url,
+                        small: small_image_url,
+                    }
+                };
+            });
+    
+            res.status(200).json({ books });
         } catch (error) {
             console.error('Database query error on GET /books/age');
             console.error(error);
