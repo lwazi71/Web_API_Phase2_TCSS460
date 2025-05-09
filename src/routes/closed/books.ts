@@ -796,7 +796,6 @@ booksRouter.patch(
  * @apiGroup Books
  *
  * @apiParam {Number} bookid The ID number of the book
- * @apiParam {Number} numRatings Number of ratings to set for the given rating level
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
