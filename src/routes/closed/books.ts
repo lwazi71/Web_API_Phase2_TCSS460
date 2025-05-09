@@ -19,7 +19,6 @@ interface BookWithAuthors {
     small_image_url: string | null;
     authors: string; // comma-separated list
 }
-<<<<<<< HEAD
 
 interface IRatings {
     average: number;
@@ -30,14 +29,29 @@ interface IRatings {
     rating_4: number;
     rating_5: number;
 }
-=======
->>>>>>> origin/dev
 
 // For formatting output
 const formatKeep = (resultRow) => ({
     ...resultRow,
     formatted: `{${resultRow.isbn13}} - ${resultRow.title}`,
 });
+
+function mwValidBookID(
+    request: Request,
+    response: Response,
+    next: NextFunction
+) {
+    const bookID: number = parseInt(request.params.bookid as string);
+    if (isNumberProvided(bookID) && bookID > 0) {
+        next();
+    } else {
+        console.error('Invalid or missing Book ID');
+        response.status(400).send({
+            message:
+                'Invalid or missing Book ID - please refer to documentation',
+        });
+    }
+}
 
 // Middleware for validating ISBN format
 function mwValidISBN(request: Request, response: Response, next: NextFunction) {
@@ -647,15 +661,14 @@ booksRouter.patch(
 );
 
 /**
- * @api {patch} /isbn/:isbn/:numRatings/incRating Increment rating count for a specific rating level
+ * @api {patch} /bookid/:bookid/incRating Increment rating count for a specific rating level
  *
  * @apiDescription Request to increment the number of ratings that a certain book has under a certain rating level by 1. If the query parameter for the rating level is given as a float, it will be parsed as an integer.
  *
  * @apiName PatchIncrementBookRatingCount
  * @apiGroup Books
  *
- * @apiParam {String} isbn ISBN-13 number (10–13 digits).
- * @apiParam {Number} numRatings Number of ratings to set for the given rating level
+ * @apiParam {Number} bookid The ID number of the book.
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
@@ -675,35 +688,66 @@ booksRouter.patch(
  * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.patch(
-    '/isbn/:isbn/:numRatings/incRating',
-    mwValidISBN,
-    mwValidNumberOfRatings,
+    '/bookid/:bookid/incRating',
+    mwValidBookID,
     mwValidRating,
     async (request: Request, response: Response) => {
-        const isbn = BigInt(request.params.isbn);
-        const numRatings: number = parseInt(
-            request.params.numRatings as string
-        );
+        const bookid = BigInt(request.params.bookid);
         const rating: number = parseInt(request.query.rating as string);
         const rateLevel: string = 'ratings_' + rating;
+        let currRatings;
+
+        try {
+            const ratingQuery = `
+                SELECT ${rateLevel}
+                FROM ratings
+                WHERE ratings.book_id = $1
+            `;
+
+            const numRatings = await pool.query(ratingQuery, [bookid]);
+
+            // const ratingLevel = 'ratings_3';  // This is the field name based on the dynamic query
+            // const numRatingsForLevel = currRatings[ratingLevel];
+            // console.log(numRatingsForLevel);  // This will output: 606158
+            //
+            // bc currRatings = { ratings_3: 606158 }
+
+            if (numRatings.rowCount === 1) {
+                currRatings = numRatings.rows[0][rateLevel];
+                // currRatings = numRatings.rows[0];
+                // currRatings = currRatings[rateLevel];
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
+                });
+            }
+        } catch (error) {
+            console.error('DB Query error on PATCH ratings');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
+            });
+        }
 
         try {
             const theQuery = `
             UPDATE ratings
             SET ${rateLevel} = $1
             FROM books
-            WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
+            WHERE ratings.book_id = books.book_id AND books.book_id = $2
             RETURNING books.*
             `;
 
-            const values = [numRatings + 1, isbn];
+            const values = [currRatings + 1, bookid];
 
             const result = await pool.query(theQuery, values);
 
             if (result.rowCount == 1) {
-                response.send({
-                    book: result.rows.map(formatKeep),
-                });
+                // response.send({
+                //     book: result.rows.map(formatKeep),
+                // });
+                const updatedRatings: IRatings = result.rows[0];
+                response.status(200).send(updatedRatings);
             } else {
                 response.status(404).send({
                     message: 'Book not found',
