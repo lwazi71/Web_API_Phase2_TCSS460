@@ -520,7 +520,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
 });
 
 /**
- * @api {get} /closed/books Get books within an average rating range
+ * @api {get} /closed/books/ratingRange Get books within an average rating range
  *
  * @apiDescription Request to get books whose ratings fall in a range of average ratings (both minimum and maximum average ratings are inclusive)
  *
@@ -544,7 +544,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
  * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.get(
-    '/',
+    '/ratingRange',
     mwValidAvgRatingRange,
     async (request: Request, response: Response) => {
         const minRating: number =
@@ -589,14 +589,14 @@ booksRouter.get(
 );
 
 /**
- * @api {patch} /closed/books/bookid/:bookid/:numRatings Update rating count for a specific rating level
+ * @api {patch} /closed/books/bookid/:bookid/numOfRatings/:numRatings Update rating count for a specific rating level
  *
  * @apiDescription Request to edit the number of ratings that a certain book has under a certain rating level.
  *
  * @apiName PatchBookRatingCount
  * @apiGroup Books
  *
- * @apiParam {String} bookid The book's ID number
+ * @apiParam {Number} bookid The ID number of the book
  * @apiParam {Number} numRatings Number of ratings to set for the given rating level
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
@@ -617,7 +617,7 @@ booksRouter.get(
  * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.patch(
-    '/bookid/:bookid/:numRatings',
+    '/bookid/:bookid/numOfRatings/:numRatings',
     mwValidBookID,
     mwValidNumberOfRatings,
     mwValidRating,
@@ -668,12 +668,14 @@ booksRouter.patch(
 /**
  * @api {patch} /closed/books/bookid/:bookid/incRating Increment rating count for a specific rating level
  *
- * @apiDescription Request to increment the number of ratings that a certain book has under a certain rating level by 1. If the query parameter for the rating level is given as a float, it will be parsed as an integer.
+ * @apiDescription Request to increment the number of ratings that a certain book has under a certain rating level by 1.
+ * If the query parameter for the rating level is given as a float, it will be parsed as an integer. This makes a call to getCurrentNumAtRateLevel()
+ * to retrieve the current number of ratings a book has at a specific rating level so that it can update the ratings table.
  *
  * @apiName PatchIncrementBookRatingCount
  * @apiGroup Books
  *
- * @apiParam {Number} bookid The ID number of the book.
+ * @apiParam {Number} bookid The ID number of the book
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
@@ -686,9 +688,6 @@ booksRouter.patch(
  * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
- *
- * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
- * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
  * @apiError (404: Book not found) {String} message "Book not found"
  * @apiError (500: Server error) {String} message "server error - contact support"
@@ -701,39 +700,12 @@ booksRouter.patch(
         const bookid = BigInt(request.params.bookid);
         const rating: number = parseInt(request.query.rating as string);
         const rateLevel: string = 'ratings_' + rating;
-        let currRatings;
 
-        try {
-            const ratingQuery = `
-                SELECT ${rateLevel}
-                FROM ratings
-                WHERE ratings.book_id = $1
-            `;
-
-            const numRatings = await pool.query(ratingQuery, [bookid]);
-
-            // const ratingLevel = 'ratings_3';  // This is the field name based on the dynamic query
-            // const numRatingsForLevel = currRatings[ratingLevel];
-            // console.log(numRatingsForLevel);  // This will output: 606158
-            //
-            // bc currRatings = { ratings_3: 606158 }
-
-            if (numRatings.rowCount === 1) {
-                currRatings = numRatings.rows[0][rateLevel];
-                // currRatings = numRatings.rows[0];
-                // currRatings = currRatings[rateLevel];
-            } else {
-                response.status(404).send({
-                    message: 'Book not found',
-                });
-            }
-        } catch (error) {
-            console.error('DB Query error on PATCH ratings');
-            console.error(error);
-            response.status(500).send({
-                message: 'server error - contact support',
-            });
-        }
+        const currRatings = await getCurrentNumAtRateLevel(
+            response,
+            rateLevel,
+            bookid
+        );
 
         try {
             const theQuery = `
@@ -749,10 +721,6 @@ booksRouter.patch(
             const result = await pool.query(theQuery, values);
 
             if (result.rowCount == 1) {
-                // response.send({
-                //     book: result.rows.map(formatKeep),
-                // });
-                //const updatedRatings: IRatings = result.rows[0];
                 const { book_id, ...ratings } = result.rows[0];
                 const updatedRatings: IRatings = {
                     average: calcRatingsAverage(result.rows[0]),
@@ -776,82 +744,55 @@ booksRouter.patch(
 );
 
 /**
- * @api {patch} /isbn/:isbn/:numRatings/decRating Decrement rating count for a specific rating level
+ * @api {patch} /closed/books/bookid/:bookid/decRating Decrement rating count for a specific rating level
  *
- * @apiDescription Request to decrement the number of ratings that a certain book has under a certain rating level by 1. If the query parameter for the rating level is given as a float, it will be parsed as an integer.
+ * @apiDescription Request to decrement the number of ratings that a certain book has under a certain rating level by 1.
+ * If the query parameter for the rating level is given as a float, it will be parsed as an integer. This makes a call to getCurrentNumAtRateLevel()
+ * to retrieve the current number of ratings a book has at a specific rating level so that it can update the ratings table.
  *
  * @apiName PatchDecrementBookRatingCount
  * @apiGroup Books
  *
- * @apiParam {String} isbn ISBN-13 number (10–13 digits).
+ * @apiParam {Number} bookid The ID number of the book
  * @apiParam {Number} numRatings Number of ratings to set for the given rating level
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Object[]} books List of books matching the rating range
- * @apiSuccess {Number} books.book_id ID number of the book
- * @apiSuccess {String} books.isbn13 ISBN-13 identifier
- * @apiSuccess {Number} books.original_publication_year Original publication year of the book
- * @apiSuccess {String} books.original_title Original title of the book
- * @apiSuccess {String} books.title Title of the book
- * @apiSuccess {String} books.image_url URL for image for the book
- * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ * @apiSuccess {Number} average The book's average rating
+ * @apiSuccess {Number} count The number of ratings the book has
+ * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
+ * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
+ * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
+ * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
+ * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
  *
- * @apiError (400: Invalid ISBN Format) {String} message "Invalid ISBN format."
- * @apiError (400: Invalid number of ratings) {String} message "'Invalid or missing Number of Ratings - please refer to documentation'"
+ * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
  * @apiError (404: Book not found) {String} message "Book not found"
  * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.patch(
     '/bookid/:bookid/decRating',
-    mwValidISBN,
+    mwValidBookID,
     mwValidRating,
     async (request: Request, response: Response) => {
         const bookid = BigInt(request.params.bookid);
         const rating: number = parseInt(request.query.rating as string);
         const rateLevel: string = 'ratings_' + rating;
-        let currRatings;
 
-        try {
-            const ratingQuery = `
-                SELECT ${rateLevel}
-                FROM ratings
-                WHERE ratings.book_id = $1
-            `;
-
-            const numRatings = await pool.query(ratingQuery, [bookid]);
-
-            // const ratingLevel = 'ratings_3';  // This is the field name based on the dynamic query
-            // const numRatingsForLevel = currRatings[ratingLevel];
-            // console.log(numRatingsForLevel);  // This will output: 606158
-            //
-            // bc currRatings = { ratings_3: 606158 }
-
-            if (numRatings.rowCount === 1) {
-                currRatings = numRatings.rows[0][rateLevel];
-                // currRatings = numRatings.rows[0];
-                // currRatings = currRatings[rateLevel];
-            } else {
-                response.status(404).send({
-                    message: 'Book not found',
-                });
-            }
-        } catch (error) {
-            console.error('DB Query error on PATCH ratings');
-            console.error(error);
-            response.status(500).send({
-                message: 'server error - contact support',
-            });
-        }
+        const currRatings = await getCurrentNumAtRateLevel(
+            response,
+            rateLevel,
+            bookid
+        );
 
         try {
             const theQuery = `
-            UPDATE ratings
-            SET ${rateLevel} = $1
-            FROM books
-            WHERE ratings.book_id = books.book_id AND books.isbn13 = $2
-            RETURNING books.*
+                UPDATE ratings
+                SET ${rateLevel} = $1
+                FROM books
+                WHERE ratings.book_id = books.book_id AND books.book_id = $2
+                RETURNING ratings.*
             `;
 
             const values = [currRatings - 1, bookid];
@@ -859,9 +800,13 @@ booksRouter.patch(
             const result = await pool.query(theQuery, values);
 
             if (result.rowCount == 1) {
-                response.send({
-                    book: result.rows.map(formatKeep),
-                });
+                const { book_id, ...ratings } = result.rows[0];
+                const updatedRatings: IRatings = {
+                    average: calcRatingsAverage(result.rows[0]),
+                    count: calcRatingsCount(result.rows[0]),
+                    ...ratings,
+                };
+                response.status(200).send(updatedRatings);
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -877,6 +822,74 @@ booksRouter.patch(
     }
 );
 
+/**
+ * @api {get} /closed/books/bookid/:bookid/ratings Get ratings for a specific book
+ *
+ * @apiDescription Request to ratings for a book. Book is retrieved from the book ID.
+ *
+ * @apiName GetBookRatings
+ * @apiGroup Books
+ *
+ * @apiParam {Number} bookid The ID number of the book
+ *
+ * @apiSuccess {Number} average The book's average rating
+ * @apiSuccess {Number} count The number of ratings the book has
+ * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
+ * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
+ * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
+ * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
+ * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ *
+ * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
+ * @apiError (404: Book not found) {String} message "Book not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
+booksRouter.get(
+    '/bookid/:bookid/ratings',
+    mwValidBookID,
+    async (request: Request, response: Response) => {
+        const bookid = BigInt(request.params.bookid);
+
+        try {
+            const theQuery = `
+                SELECT ratings.*
+                FROM ratings
+                WHERE ratings.book_id = $1
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount == 1) {
+                const { book_id, ...ratings } = result.rows[0];
+                const updatedRatings: IRatings = {
+                    average: calcRatingsAverage(result.rows[0]),
+                    count: calcRatingsCount(result.rows[0]),
+                    ...ratings,
+                };
+                response.status(200).send(updatedRatings);
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
+                });
+            }
+        } catch (error) {
+            console.error('DB Query error on GET ratings');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
+            });
+        }
+    }
+);
+
+/**
+ * Calculates the total number of ratings across all rating levels (1–5).
+ *
+ * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
+ *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
+ *
+ * @returns {number} The total count of all ratings combined.
+ */
 function calcRatingsCount(result: QueryResult): number {
     const count: number =
         result['ratings_1'] +
@@ -887,6 +900,15 @@ function calcRatingsCount(result: QueryResult): number {
     return count;
 }
 
+/**
+ * Calculates the average rating of a book by weighting all the rating levels and dividing this by the
+ * total number of ratings across all rating levels. Makes a call calcRatingsCount() to get total number of ratings.
+ *
+ * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
+ *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
+ *
+ * @returns {number} The average rating of a book.
+ */
 function calcRatingsAverage(result: QueryResult): number {
     const count: number = calcRatingsCount(result);
     const weightedRatings: number =
@@ -896,6 +918,53 @@ function calcRatingsAverage(result: QueryResult): number {
         result['ratings_4'] * 4 +
         result['ratings_5'] * 5;
     return parseFloat((weightedRatings / count).toFixed(2));
+}
+
+/**
+ * Asynchronously retrieves the current rating count at a specific rating level for a book.
+ *
+ * This function queries the database for the number of ratings at the provided rating level
+ * for a given book ID, returning the count if the book exists, or sending an error response if not.
+ *
+ * @async
+ * @param {Response} response - The Express response object, used to send the response back to the client.
+ * @param {string} rateLevel - The rating level to check (e.g., "ratings_1", "ratings_2", etc.).
+ * @param {bigint} bookid - The unique ID of the book for which the rating count is being fetched.
+ * @returns {Promise<number>} A promise that resolves to the current count of ratings at the specified level.
+ * @throws {Error} If a database query fails, an error message is logged, and a 500 status code is sent.
+ * @throws {Error} If the book is not found, a 404 status code is sent with a relevant error message.
+ */
+async function getCurrentNumAtRateLevel(
+    response: Response,
+    rateLevel: string,
+    bookid: bigint
+): Promise<number> {
+    let currRatings: number;
+    try {
+        const ratingQuery = `
+                SELECT ${rateLevel}
+                FROM ratings
+                WHERE ratings.book_id = $1
+            `;
+
+        const numRatings = await pool.query(ratingQuery, [bookid]);
+
+        if (numRatings.rowCount === 1) {
+            currRatings = numRatings.rows[0][rateLevel];
+        } else {
+            response.status(404).send({
+                message: 'Book not found',
+            });
+        }
+    } catch (error) {
+        console.error('DB Query error on PATCH ratings');
+        console.error(error);
+        response.status(500).send({
+            message: 'server error - contact support',
+        });
+    }
+
+    return currRatings;
 }
 
 /**
@@ -968,3 +1037,76 @@ booksRouter.get('/title/:title', async (req: Request, res: Response) => {
 });
 
 export { booksRouter };
+
+booksRouter.delete(
+    '/author/:author',
+    async (request: Request, response: Response) => {
+        const author = request.params.author;
+
+        const client = await pool.connect();
+
+        try {
+            await client.query('BEGIN');
+
+            // Start by getting all the books from the author to send back later
+            const getBooksQuery = `
+                SELECT books.*
+                FROM books
+                JOIN authors ON books.book_id = authors.book_id
+                WHERE authors.author = $1
+            `;
+
+            const booksResult = await client.query(getBooksQuery, [author]);
+
+            if (booksResult.rowCount === 0) {
+                // if no books were found, then 404
+                await client.query('ROLLBACK');
+                response.status(404).send({
+                    message: 'Author not found',
+                });
+                return;
+            }
+
+            // Then get all the book IDs of the author's books
+            const getBookIDsQuery = `
+                SELECT book_id
+                FROM authors
+                WHERE author = $1;
+            `;
+
+            const bookIDsResult = await client.query(getBookIDsQuery, [author]);
+
+            const bookIds = bookIDsResult.rows.map((row) => row.book_id); // store just the books IDs
+
+            if (bookIds.length === 0) {
+                await client.query('ROLLBACK');
+                response.status(404).send({
+                    message: 'Author not found',
+                });
+                return;
+            }
+
+            const deleteFromRatingsQuery = `DELETE FROM ratings WHERE book_id = ANY($1)`;
+            await client.query(deleteFromRatingsQuery, [bookIds]);
+
+            const deleteFromBooksQuery = `DELETE FROM books WHERE book_id = ANY($1)`;
+            await client.query(deleteFromBooksQuery, [bookIds]);
+
+            const deleteFromAuthorsQuery = `DELETE FROM authors WHERE book_id = ANY($1) AND author = $2`;
+            await client.query(deleteFromAuthorsQuery, [bookIds, author]);
+
+            await client.query('COMMIT');
+            response.status(200).send({
+                books: booksResult.rows.map(formatKeep),
+            });
+        } catch (error) {
+            console.error('DB Query error on DELETE author');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
+            });
+        } finally {
+            client.release();
+        }
+    }
+);
