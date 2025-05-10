@@ -16,6 +16,7 @@ const isNumberProvided = validationFunctions.isNumberProvided;
 const calcRatingsCount = formattingFunctions.calcRatingsCount;
 const calcRatingsAverage = formattingFunctions.calcRatingsAverage;
 const getCurrentNumAtRateLevel = formattingFunctions.getCurrentNumAtRateLevel;
+const getFormattedBook = formattingFunctions.getFormattedBook;
 const getFormattedBooksList = formattingFunctions.getFormattedBooksList;
 
 // For formatting output
@@ -628,39 +629,60 @@ booksRouter.get(
         const maxRating: number =
             parseFloat(request.query.maxRating as string) || 5.0;
 
-        const theQuery = `
-        SELECT books.*
-        FROM books
-        JOIN ratings ON books.book_id = ratings.book_id
-        WHERE 
-            (
-                (ratings_1::float + 2 * ratings_2::float + 3 * ratings_3::float + 4 * ratings_4::float + 5 * ratings_5::float) 
-                / (ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5) 
-            )
-            BETWEEN $1 AND $2 
-        `;
+        try {
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE (
+                        (ratings_1::float + 2 * ratings_2::float + 3 * ratings_3::float + 4 * ratings_4::float + 5 * ratings_5::float) 
+                        / (ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5) 
+                    )
+                    BETWEEN $1 AND $2 
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
-        const values = [minRating, maxRating];
+            const values = [minRating, maxRating];
 
-        pool.query(theQuery, values)
-            .then((result) => {
-                if (result.rowCount > 0) {
-                    response.send({
-                        books: result.rows.map(formatKeep),
-                    });
-                } else {
-                    response.status(404).send({
-                        message: 'No books found in range',
-                    });
-                }
-            })
-            .catch((error) => {
-                console.error('DB Query error on GET');
-                console.error(error);
-                response.status(500).send({
-                    message: 'server error - contact support',
+            const result = await pool.query(theQuery, values);
+
+            if (result.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'No books found in range',
                 });
+            }
+
+            const books: IBook[] = getFormattedBooksList(result);
+
+            response.status(200).json({ books });
+        } catch (error) {
+            console.error('DB Query error on GET');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
             });
+        }
     }
 );
 
@@ -706,7 +728,7 @@ booksRouter.patch(
         const rateLevel: string = 'ratings_' + rating;
 
         try {
-            const theQuery = `
+            const theUpdateQuery = `
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
@@ -716,21 +738,67 @@ booksRouter.patch(
 
             const values = [numRatings, bookid];
 
-            const result = await pool.query(theQuery, values);
+            const updatedResult = await pool.query(theUpdateQuery, values);
 
-            if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+            if (updatedResult.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Book not found',
+                });
+            }
+
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount === 1) {
+                const book: IBook = getFormattedBook(result);
+                response.status(200).json({ book });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
                 });
             }
+
+            // if (result.rowCount == 1) {
+            //     const { book_id, ...ratings } = result.rows[0];
+            //     const updatedRatings: IRatings = {
+            //         average: calcRatingsAverage(result.rows[0]),
+            //         count: calcRatingsCount(result.rows[0]),
+            //         ...ratings,
+            //     };
+            //     response.status(200).send(updatedRatings);
+            // } else {
+            //     response.status(404).send({
+            //         message: 'Book not found',
+            //     });
+            // }
         } catch (error) {
             console.error('DB Query error on PATCH ratings');
             console.error(error);
@@ -784,7 +852,7 @@ booksRouter.patch(
         );
 
         try {
-            const theQuery = `
+            const theUpdateQuery = `
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
@@ -794,16 +862,48 @@ booksRouter.patch(
 
             const values = [currRatings + 1, bookid];
 
-            const result = await pool.query(theQuery, values);
+            const updatedResult = await pool.query(theUpdateQuery, values);
 
-            if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+            if (updatedResult.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Book not found',
+                });
+            }
+
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount === 1) {
+                const book: IBook = getFormattedBook(result);
+                response.status(200).json({ book });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -862,7 +962,7 @@ booksRouter.patch(
         );
 
         try {
-            const theQuery = `
+            const theUpdateQuery = `
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
@@ -872,16 +972,48 @@ booksRouter.patch(
 
             const values = [currRatings - 1, bookid];
 
-            const result = await pool.query(theQuery, values);
+            const updatedResult = await pool.query(theUpdateQuery, values);
 
-            if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+            if (updatedResult.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Book not found',
+                });
+            }
+
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount === 1) {
+                const book: IBook = getFormattedBook(result);
+                response.status(200).json({ book });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -1146,10 +1278,34 @@ booksRouter.delete(
 
             // Start by getting all the books from the author to send back later
             const getBooksQuery = `
-                SELECT books.*
-                FROM books
-                JOIN authors ON books.book_id = authors.book_id
-                WHERE authors.author = $1
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id IN (
+                    SELECT book_id FROM authors WHERE author = $1
+                )
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
             `;
 
             const booksResult = await client.query(getBooksQuery, [author]);
@@ -1182,6 +1338,7 @@ booksRouter.delete(
                 return;
             }
 
+            //all deletion happens via these 3
             const deleteFromRatingsQuery = `DELETE FROM ratings WHERE book_id = ANY($1)`;
             await client.query(deleteFromRatingsQuery, [bookIds]);
 
@@ -1192,9 +1349,10 @@ booksRouter.delete(
             await client.query(deleteFromAuthorsQuery, [bookIds, author]);
 
             await client.query('COMMIT');
-            response.status(200).send({
-                books: booksResult.rows.map(formatKeep),
-            });
+
+            const books: IBook[] = getFormattedBooksList(booksResult);
+
+            response.status(200).json({ books });
         } catch (error) {
             console.error('DB Query error on DELETE author');
             console.error(error);
