@@ -16,11 +16,12 @@ const isNumberProvided = validationFunctions.isNumberProvided;
 const calcRatingsCount = formattingFunctions.calcRatingsCount;
 const calcRatingsAverage = formattingFunctions.calcRatingsAverage;
 const getCurrentNumAtRateLevel = formattingFunctions.getCurrentNumAtRateLevel;
+const getFormattedBooksList = formattingFunctions.getFormattedBooksList;
 
 // For formatting output
 const formatKeep = (resultRow) => ({
     ...resultRow,
-    formatted: `{${resultRow.isbn13}} - ${resultRow.title}`,
+    //formatted: `{${resultRow.isbn13}} - ${resultRow.title}`,
 });
 
 function mwValidBookID(
@@ -242,35 +243,59 @@ booksRouter.post('/', async (request: Request, response: Response) => {
 booksRouter.get(
     '/author/:author',
     //mwValidAuthor,
-    (request: Request, response: Response) => {
+    async (request: Request, response: Response) => {
         const author = request.params.author;
-        const theQuery = `
-        SELECT books.*
-        FROM books
-        JOIN authors ON books.book_id = authors.book_id
-        WHERE authors.author = $1
-    `;
-        const values = [author];
 
-        pool.query(theQuery, values)
-            .then((result) => {
-                if (result.rowCount > 0) {
-                    response.send({
-                        books: result.rows.map(formatKeep),
-                    });
-                } else {
-                    response.status(404).send({
-                        message: 'Author not found',
-                    });
-                }
-            })
-            .catch((error) => {
-                console.error('DB Query error on GET /author/:author');
-                console.error(error);
-                response.status(500).send({
-                    message: 'server error - contact support',
+        try {
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id IN (
+                    SELECT book_id FROM authors WHERE author = $1
+                )
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [author]);
+
+            if (result.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Author not found',
                 });
+            }
+
+            const books: IBook[] = getFormattedBooksList(result);
+
+            response.status(200).json({ books });
+        } catch (error) {
+            console.error('DB Query error on GET /author/:author');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
             });
+        }
     }
 );
 
@@ -931,91 +956,6 @@ booksRouter.get(
         }
     }
 );
-
-// /**
-//  * Calculates the total number of ratings across all rating levels (1–5).
-//  *
-//  * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
-//  *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
-//  *
-//  * @returns {number} The total count of all ratings combined.
-//  */
-// function calcRatingsCount(result: QueryResult): number {
-//     const count: number =
-//         result['ratings_1'] +
-//         result['ratings_2'] +
-//         result['ratings_3'] +
-//         result['ratings_4'] +
-//         result['ratings_5'];
-//     return count;
-// }
-
-// /**
-//  * Calculates the average rating of a book by weighting all the rating levels and dividing this by the
-//  * total number of ratings across all rating levels. Makes a call calcRatingsCount() to get total number of ratings.
-//  *
-//  * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
-//  *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
-//  *
-//  * @returns {number} The average rating of a book.
-//  */
-// function calcRatingsAverage(result: QueryResult): number {
-//     const count: number = calcRatingsCount(result);
-//     const weightedRatings: number =
-//         result['ratings_1'] * 1 +
-//         result['ratings_2'] * 2 +
-//         result['ratings_3'] * 3 +
-//         result['ratings_4'] * 4 +
-//         result['ratings_5'] * 5;
-//     return parseFloat((weightedRatings / count).toFixed(2));
-// }
-
-// /**
-//  * Asynchronously retrieves the current rating count at a specific rating level for a book.
-//  *
-//  * This function queries the database for the number of ratings at the provided rating level
-//  * for a given book ID, returning the count if the book exists, or sending an error response if not.
-//  *
-//  * @async
-//  * @param {Response} response - The Express response object, used to send the response back to the client.
-//  * @param {string} rateLevel - The rating level to check (e.g., "ratings_1", "ratings_2", etc.).
-//  * @param {bigint} bookid - The unique ID of the book for which the rating count is being fetched.
-//  * @returns {Promise<number>} A promise that resolves to the current count of ratings at the specified level.
-//  * @throws {Error} If a database query fails, an error message is logged, and a 500 status code is sent.
-//  * @throws {Error} If the book is not found, a 404 status code is sent with a relevant error message.
-//  */
-// async function getCurrentNumAtRateLevel(
-//     response: Response,
-//     rateLevel: string,
-//     bookid: bigint
-// ): Promise<number> {
-//     let currRatings: number;
-//     try {
-//         const ratingQuery = `
-//                 SELECT ${rateLevel}
-//                 FROM ratings
-//                 WHERE ratings.book_id = $1
-//             `;
-
-//         const numRatings = await pool.query(ratingQuery, [bookid]);
-
-//         if (numRatings.rowCount === 1) {
-//             currRatings = numRatings.rows[0][rateLevel];
-//         } else {
-//             response.status(404).send({
-//                 message: 'Book not found',
-//             });
-//         }
-//     } catch (error) {
-//         console.error('DB Query error on PATCH ratings');
-//         console.error(error);
-//         response.status(500).send({
-//             message: 'server error - contact support',
-//         });
-//     }
-
-//     return currRatings;
-// }
 
 /**
  * @api {get} /books/:bookId/image Retrieve image of a book
