@@ -1,7 +1,7 @@
 // express is the framework we're going to use to handle requests
 import express, { Request, Response, Router, NextFunction } from 'express';
-
 import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
 
 const key = {
     secret: process.env.JSON_WEB_TOKEN,
@@ -26,26 +26,108 @@ export interface IUserRequest extends Request {
 
 // Add more/your own password validation here. The *rules* must be documented
 // and the client-side validation should match these rules.
-const isValidPassword = (password: string): boolean =>
-    isStringProvided(password) && password.length > 7;
+const isValidPassword = (password: string): boolean => {
+    if (!isStringProvided(password)) return false;
+
+    const trimmed = password.trim();
+    const regex = new RegExp(
+        '^' +
+            '(?=.*[a-z])' + // at least one lowercase
+            '(?=.*[A-Z])' + // at least one uppercase
+            '(?=.*\\d)' + // at least one digit
+            '(?=.*!)' + // at least one '!' symbol
+            '(?!.*(.)\\1{2,})' + // no 3+ consecutive duplicate characters
+            '[A-Za-z\\d!]{10,}' + // only A-Za-z0-9! and at least 10 characters
+            '$'
+    );
+
+    return regex.test(trimmed);
+};
 
 // Add more/your own phone number validation here. The *rules* must be documented
 // and the client-side validation should match these rules.
-const isValidPhone = (phone: string): boolean =>
-    isStringProvided(phone) && phone.length >= 10;
+const isValidPhone = (phone: string): boolean => {
+    if (!isStringProvided(phone)) return false;
+
+    const trimmed = phone.trim();
+
+    const phoneRegex =
+        /^(?:\+1[-.\s]?)?\(?([2-9][0-9]{2})\)?[-.\s]?([2-9][0-9]{2})[-.\s]?(\d{4})$/;
+
+    if (!phoneRegex.test(trimmed)) return false;
+
+    // Extract digits
+    const digitsOnly = trimmed.replace(/[^\d]/g, '');
+    const normalized =
+        digitsOnly.length === 11 && digitsOnly.startsWith('1')
+            ? digitsOnly.slice(1)
+            : digitsOnly;
+
+    if (normalized.length !== 10) return false;
+
+    const areaCode = parseInt(normalized.slice(0, 3));
+    const exchangeCode = parseInt(normalized.slice(3, 6));
+    const serial = parseInt(normalized.slice(6, 10));
+
+    return areaCode >= 200 && exchangeCode >= 200 && serial !== 0;
+};
 
 // Add more/your own role validation here. The *rules* must be documented
 // and the client-side validation should match these rules.
-const isValidRole = (priority: string): boolean =>
-    validationFunctions.isNumberProvided(priority) &&
-    parseInt(priority) >= 1 &&
-    parseInt(priority) <= 5;
+const isValidRole = (role: string): boolean => {
+    if (!validationFunctions.isNumberProvided(role)) return false;
+    const roleNum = parseInt(role);
+    return roleNum >= 1 && roleNum <= 5;
+};
 
 // Add more/your own email validation here. The *rules* must be documented
 // and the client-side validation should match these rules.
 const isValidEmail = (email: string): boolean =>
     isStringProvided(email) && email.includes('@');
 
+/**
+ * @apiBody {String} role a role for this user [1–5]
+ * Must:
+ * - Be a number
+ * - Be between 1 and 5 inclusive
+ * - Represents access level or user type
+ */
+const roleMiddlewareCheck = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    if (isValidRole(req.body.role)) {
+        next();
+    } else {
+        res.status(400).send({
+            message:
+                'Invalid or missing role - must be a number between 1 and 5',
+        });
+    }
+};
+/**
+ * @apiBody {String} phone a user's phone number
+ * Must:
+ * - Be 10 digits (or 11 if using +1)
+ * - Area code and exchange code must start with 2–9
+ * - Accept common formats like (555) 555-5555, 555-555-5555, +1 555 555 5555
+ * - Must not include letters or symbols
+ */
+const phoneMiddlewareCheck = (
+    request: Request,
+    response: Response,
+    next: NextFunction
+) => {
+    if (isValidPhone(request.body.phone)) {
+        next();
+    } else {
+        response.status(400).send({
+            message:
+                'Invalid or missing phone number - please refer to documentation',
+        });
+    }
+};
 // middleware functions may be defined elsewhere!
 const emailMiddlewareCheck = (
     request: Request,
@@ -57,6 +139,30 @@ const emailMiddlewareCheck = (
     } else {
         response.status(400).send({
             message: 'Invalid or missing email - please refer to documentation',
+        });
+    }
+};
+/**
+ * @apiBody {String} password a user's password
+ * Must:
+ * - Be at least 10 characters long
+ * - Include at least one lowercase letter
+ * - Include at least one uppercase letter
+ * - Include at least one digit
+ * - Include at least one `!` character
+ * - Not contain 3+ repeated characters in a row
+ */
+const passwordMiddlewareCheck = (
+    request: Request,
+    response: Response,
+    next: NextFunction
+) => {
+    if (isValidPassword(request.body.password)) {
+        next();
+    } else {
+        response.status(400).send({
+            message:
+                'Invalid or missing password - must be at least 10 characters, include one uppercase, one lowercase, one digit, and one !, with no 3+ repeated characters',
         });
     }
 };
@@ -96,10 +202,11 @@ const emailMiddlewareCheck = (
  */
 registerRouter.post(
     '/',
-    emailMiddlewareCheck, // these middleware functions may be defined elsewhere!
+    emailMiddlewareCheck,
+    phoneMiddlewareCheck,
+    passwordMiddlewareCheck,
+    roleMiddlewareCheck,
     (request: Request, response: Response, next: NextFunction) => {
-        //Verify that the caller supplied all the parameters
-        //In js, empty strings or null values evaluate to false
         if (
             isStringProvided(request.body.firstname) &&
             isStringProvided(request.body.lastname) &&
@@ -107,28 +214,8 @@ registerRouter.post(
         ) {
             next();
         } else {
-            response.status(400).send({
+            return response.status(400).send({
                 message: 'Missing required information',
-            });
-        }
-    },
-    (request: Request, response: Response, next: NextFunction) => {
-        if (isValidPhone(request.body.phone)) {
-            next();
-        } else {
-            response.status(400).send({
-                message:
-                    'Invalid or missing phone number  - please refer to documentation',
-            });
-        }
-    },
-    (request: Request, response: Response, next: NextFunction) => {
-        if (isValidPassword(request.body.password)) {
-            next();
-        } else {
-            response.status(400).send({
-                message:
-                    'Invalid or missing password  - please refer to documentation',
             });
         }
     },
@@ -136,15 +223,18 @@ registerRouter.post(
         if (isValidRole(request.body.role)) {
             next();
         } else {
-            response.status(400).send({
+            return response.status(400).send({
                 message:
-                    'Invalid or missing role  - please refer to documentation',
+                    'Invalid or missing role - please refer to documentation',
             });
         }
     },
     (request: IUserRequest, response: Response, next: NextFunction) => {
-        const theQuery =
-            'INSERT INTO Account(firstname, lastname, username, email, phone, account_role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING account_id';
+        const theQuery = `
+            INSERT INTO Account (firstname, lastname, username, email, phone, account_role)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING account_id
+        `;
         const values = [
             request.body.firstname,
             request.body.lastname,
@@ -153,49 +243,43 @@ registerRouter.post(
             request.body.phone,
             request.body.role,
         ];
-        // console.dir({ ...request.body, password: '******' });
+
         pool.query(theQuery, values)
             .then((result) => {
-                //stash the account_id into the request object to be used in the next function
-                // NOTE the TYPE for the Request object in this middleware function
                 request.id = result.rows[0].account_id;
                 next();
             })
             .catch((error) => {
-                //log the error
-                // console.log(error)
-                if (error.constraint == 'account_username_key') {
-                    response.status(400).send({
-                        message: 'Username exists',
-                    });
-                } else if (error.constraint == 'account_email_key') {
-                    response.status(400).send({
-                        message: 'Email exists',
-                    });
-                } else if (error.constraint == 'account_phone_key') {
-                    response.status(400).send({
+                if (error.constraint === 'account_username_key') {
+                    return response
+                        .status(400)
+                        .send({ message: 'Username exists' });
+                } else if (error.constraint === 'account_email_key') {
+                    return response
+                        .status(400)
+                        .send({ message: 'Email exists' });
+                } else if (error.constraint === 'account_phone_key') {
+                    return response.status(400).send({
                         message: 'Duplicate phone number not allowed',
                     });
                 } else {
-                    //log the error
-                    console.error('DB Query error on register');
-                    console.error(error);
-                    response.status(500).send({
-                        message: 'server error - contact support',
-                    });
+                    console.error('DB Query error on register', error);
+                    return response
+                        .status(500)
+                        .send({ message: 'server error - contact support' });
                 }
             });
     },
     (request: IUserRequest, response: Response) => {
-        //We're storing salted hashes to make our application more secure
-        //If you're interested as to what that is, and why we should use it
-        //watch this youtube video: https://www.youtube.com/watch?v=8ZtInClXe1Q
         const salt = generateSalt(32);
         const saltedHash = generateHash(request.body.password, salt);
 
-        const theQuery =
-            'INSERT INTO Account_Credential(account_id, salted_hash, salt) VALUES ($1, $2, $3)';
+        const theQuery = `
+            INSERT INTO Account_Credential(account_id, salted_hash, salt)
+            VALUES ($1, $2, $3)
+        `;
         const values = [request.id, saltedHash, salt];
+
         pool.query(theQuery, values)
             .then(() => {
                 const accessToken = jwt.sign(
@@ -205,52 +289,27 @@ registerRouter.post(
                     },
                     key.secret,
                     {
-                        expiresIn: '14 days', // expires in 14 days
+                        expiresIn: '14 days',
                     }
                 );
-                console.dir({ ...request.body, password: '******' });
-                //We successfully added the user!
+
                 response.status(201).send({
                     accessToken,
-
                     user: {
                         id: request.id,
                         name: request.body.firstname,
                         email: request.body.email,
-                        role: 'Admin',
+                        role: request.body.role,
                     },
                 });
             })
             .catch((error) => {
-                /***********************************************************************
-                 * If we get an error inserting the PWD, we should go back and remove
-                 * the user from the member table. We don't want a member in that table
-                 * without a PWD! That implementation is up to you if you want to add
-                 * that step.
-                 **********************************************************************/
-
-                //log the error
-                console.error('DB Query error on register');
-                console.error(error);
-                response.status(500).send({
+                console.error('DB Query error on credential insert', error);
+                return response.status(500).send({
                     message: 'server error - contact support',
                 });
             });
     }
 );
-
-registerRouter.get('/hash_demo', (request, response) => {
-    const password = 'password12345';
-
-    const salt = generateSalt(32);
-    const saltedHash = generateHash(password, salt);
-    const unsaltedHash = generateHash(password, '');
-
-    response.status(200).send({
-        salt: salt,
-        salted_hash: saltedHash,
-        unsalted_hash: unsaltedHash,
-    });
-});
 
 export { registerRouter };
