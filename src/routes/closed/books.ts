@@ -1,7 +1,11 @@
 // express is the framework we're going to use to handle requests
 import express, { NextFunction, Request, Response, Router } from 'express';
 // Access the connection to Postgres Database
-import { pool, validationFunctions } from '../../core/utilities';
+import {
+    pool,
+    validationFunctions,
+    formattingFunctions,
+} from '../../core/utilities';
 import { QueryResult } from 'pg';
 import './http_responses';
 
@@ -9,6 +13,9 @@ const booksRouter: Router = express.Router();
 
 const isStringProvided = validationFunctions.isStringProvided;
 const isNumberProvided = validationFunctions.isNumberProvided;
+const calcRatingsCount = formattingFunctions.calcRatingsCount;
+const calcRatingsAverage = formattingFunctions.calcRatingsAverage;
+const getCurrentNumAtRateLevel = formattingFunctions.getCurrentNumAtRateLevel;
 
 // For formatting output
 const formatKeep = (resultRow) => ({
@@ -478,8 +485,8 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
     const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
     const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
 
-        try {
-            const query = `
+    try {
+        const query = `
                 SELECT 
                     b.isbn13,
                     b.original_publication_year,
@@ -500,66 +507,68 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
                 ORDER BY b.original_publication_year ${orderInSQL}
                 LIMIT $1 OFFSET $2
             `;
-    
-            const result = await pool.query(query, [limit, offset]);
-    
-            const books: IBook[] = result.rows.map(row => {
-                const { 
-                    isbn13,
-                    authors,
-                    original_publication_year,
-                    original_title,
-                    title,
-                    image_url,
-                    small_image_url,
-                    ratings_1 = 0,
-                    ratings_2 = 0,
-                    ratings_3 = 0,
-                    ratings_4 = 0,
-                    ratings_5 = 0
-                } = row;
-    
-                const count = ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5;
-                const average = count === 0 ? 0 : (
-                    (1 * ratings_1 +
-                     2 * ratings_2 +
-                     3 * ratings_3 +
-                     4 * ratings_4 +
-                     5 * ratings_5) / count
-                );
-    
-                return {
-                    isbn13: Number(isbn13),
-                    authors,
-                    publication: original_publication_year,
-                    original_title,
-                    title,
-                    ratings: {
-                        average: parseFloat(average.toFixed(2)),
-                        count,
-                        rating_1: ratings_1,
-                        rating_2: ratings_2,
-                        rating_3: ratings_3,
-                        rating_4: ratings_4,
-                        rating_5: ratings_5,
-                    },
-                    icons: {
-                        large: image_url,
-                        small: small_image_url,
-                    }
-                };
-            });
-    
-            res.status(200).json({ books });
-        } catch (error) {
-            console.error('Database query error on GET /books/age');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
-            });
-        }
+
+        const result = await pool.query(query, [limit, offset]);
+
+        const books: IBook[] = result.rows.map((row) => {
+            const {
+                isbn13,
+                authors,
+                original_publication_year,
+                original_title,
+                title,
+                image_url,
+                small_image_url,
+                ratings_1 = 0,
+                ratings_2 = 0,
+                ratings_3 = 0,
+                ratings_4 = 0,
+                ratings_5 = 0,
+            } = row;
+
+            const count =
+                ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5;
+            const average =
+                count === 0
+                    ? 0
+                    : (1 * ratings_1 +
+                          2 * ratings_2 +
+                          3 * ratings_3 +
+                          4 * ratings_4 +
+                          5 * ratings_5) /
+                      count;
+
+            return {
+                isbn13: Number(isbn13),
+                authors,
+                publication: original_publication_year,
+                original_title,
+                title,
+                ratings: {
+                    average: parseFloat(average.toFixed(2)),
+                    count,
+                    rating_1: ratings_1,
+                    rating_2: ratings_2,
+                    rating_3: ratings_3,
+                    rating_4: ratings_4,
+                    rating_5: ratings_5,
+                },
+                icons: {
+                    large: image_url,
+                    small: small_image_url,
+                },
+            };
+        });
+
+        res.status(200).json({ books });
+    } catch (error) {
+        console.error('Database query error on GET /books/age');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
-);
+});
 
 /**
  * @api {get} /closed/books/ratingRange Get books within an average rating range
@@ -923,91 +932,91 @@ booksRouter.get(
     }
 );
 
-/**
- * Calculates the total number of ratings across all rating levels (1–5).
- *
- * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
- *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
- *
- * @returns {number} The total count of all ratings combined.
- */
-function calcRatingsCount(result: QueryResult): number {
-    const count: number =
-        result['ratings_1'] +
-        result['ratings_2'] +
-        result['ratings_3'] +
-        result['ratings_4'] +
-        result['ratings_5'];
-    return count;
-}
+// /**
+//  * Calculates the total number of ratings across all rating levels (1–5).
+//  *
+//  * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
+//  *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
+//  *
+//  * @returns {number} The total count of all ratings combined.
+//  */
+// function calcRatingsCount(result: QueryResult): number {
+//     const count: number =
+//         result['ratings_1'] +
+//         result['ratings_2'] +
+//         result['ratings_3'] +
+//         result['ratings_4'] +
+//         result['ratings_5'];
+//     return count;
+// }
 
-/**
- * Calculates the average rating of a book by weighting all the rating levels and dividing this by the
- * total number of ratings across all rating levels. Makes a call calcRatingsCount() to get total number of ratings.
- *
- * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
- *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
- *
- * @returns {number} The average rating of a book.
- */
-function calcRatingsAverage(result: QueryResult): number {
-    const count: number = calcRatingsCount(result);
-    const weightedRatings: number =
-        result['ratings_1'] * 1 +
-        result['ratings_2'] * 2 +
-        result['ratings_3'] * 3 +
-        result['ratings_4'] * 4 +
-        result['ratings_5'] * 5;
-    return parseFloat((weightedRatings / count).toFixed(2));
-}
+// /**
+//  * Calculates the average rating of a book by weighting all the rating levels and dividing this by the
+//  * total number of ratings across all rating levels. Makes a call calcRatingsCount() to get total number of ratings.
+//  *
+//  * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
+//  *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
+//  *
+//  * @returns {number} The average rating of a book.
+//  */
+// function calcRatingsAverage(result: QueryResult): number {
+//     const count: number = calcRatingsCount(result);
+//     const weightedRatings: number =
+//         result['ratings_1'] * 1 +
+//         result['ratings_2'] * 2 +
+//         result['ratings_3'] * 3 +
+//         result['ratings_4'] * 4 +
+//         result['ratings_5'] * 5;
+//     return parseFloat((weightedRatings / count).toFixed(2));
+// }
 
-/**
- * Asynchronously retrieves the current rating count at a specific rating level for a book.
- *
- * This function queries the database for the number of ratings at the provided rating level
- * for a given book ID, returning the count if the book exists, or sending an error response if not.
- *
- * @async
- * @param {Response} response - The Express response object, used to send the response back to the client.
- * @param {string} rateLevel - The rating level to check (e.g., "ratings_1", "ratings_2", etc.).
- * @param {bigint} bookid - The unique ID of the book for which the rating count is being fetched.
- * @returns {Promise<number>} A promise that resolves to the current count of ratings at the specified level.
- * @throws {Error} If a database query fails, an error message is logged, and a 500 status code is sent.
- * @throws {Error} If the book is not found, a 404 status code is sent with a relevant error message.
- */
-async function getCurrentNumAtRateLevel(
-    response: Response,
-    rateLevel: string,
-    bookid: bigint
-): Promise<number> {
-    let currRatings: number;
-    try {
-        const ratingQuery = `
-                SELECT ${rateLevel}
-                FROM ratings
-                WHERE ratings.book_id = $1
-            `;
+// /**
+//  * Asynchronously retrieves the current rating count at a specific rating level for a book.
+//  *
+//  * This function queries the database for the number of ratings at the provided rating level
+//  * for a given book ID, returning the count if the book exists, or sending an error response if not.
+//  *
+//  * @async
+//  * @param {Response} response - The Express response object, used to send the response back to the client.
+//  * @param {string} rateLevel - The rating level to check (e.g., "ratings_1", "ratings_2", etc.).
+//  * @param {bigint} bookid - The unique ID of the book for which the rating count is being fetched.
+//  * @returns {Promise<number>} A promise that resolves to the current count of ratings at the specified level.
+//  * @throws {Error} If a database query fails, an error message is logged, and a 500 status code is sent.
+//  * @throws {Error} If the book is not found, a 404 status code is sent with a relevant error message.
+//  */
+// async function getCurrentNumAtRateLevel(
+//     response: Response,
+//     rateLevel: string,
+//     bookid: bigint
+// ): Promise<number> {
+//     let currRatings: number;
+//     try {
+//         const ratingQuery = `
+//                 SELECT ${rateLevel}
+//                 FROM ratings
+//                 WHERE ratings.book_id = $1
+//             `;
 
-        const numRatings = await pool.query(ratingQuery, [bookid]);
+//         const numRatings = await pool.query(ratingQuery, [bookid]);
 
-        if (numRatings.rowCount === 1) {
-            currRatings = numRatings.rows[0][rateLevel];
-        } else {
-            response.status(404).send({
-                message: 'Book not found',
-            });
-        }
-    } catch (error) {
-        console.error('DB Query error on PATCH ratings');
-        console.error(error);
-        response.status(500).send({
-            message: 'server error - contact support',
-        });
-    }
+//         if (numRatings.rowCount === 1) {
+//             currRatings = numRatings.rows[0][rateLevel];
+//         } else {
+//             response.status(404).send({
+//                 message: 'Book not found',
+//             });
+//         }
+//     } catch (error) {
+//         console.error('DB Query error on PATCH ratings');
+//         console.error(error);
+//         response.status(500).send({
+//             message: 'server error - contact support',
+//         });
+//     }
 
-    return currRatings;
-}
- 
+//     return currRatings;
+// }
+
 /**
  * @api {get} /books/:bookId/image Retrieve image of a book
  * @apiName GetBookImage
@@ -1028,39 +1037,38 @@ async function getCurrentNumAtRateLevel(
  * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
-        const bookId: number = parseInt(req.params.bookId);
+    const bookId: number = parseInt(req.params.bookId);
 
-        if (isNaN(bookId) || bookId <= 0) {
-            return res.status(400).json({
-                error: 'Invalid book ID parameter. It must be a number and positive.'
-            });
-        }
+    if (isNaN(bookId) || bookId <= 0) {
+        return res.status(400).json({
+            error: 'Invalid book ID parameter. It must be a number and positive.',
+        });
+    }
 
-        try {
-            const query: string = `
+    try {
+        const query: string = `
                 SELECT image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-            const result = await pool.query(query, [bookId]);
+        const result = await pool.query(query, [bookId]);
 
-            if (result.rowCount == 0 || !result.rows[0].image_url) {
-                return res.status(404).json({
-                    error: 'Image not found for given book ID.'
-                });
-            }
-        
-            res.status(200).json({ image: result.rows[0].image_url});
-        } catch (error) {
-            console.error('Database query error on GET /books/:bookId/image');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
+        if (result.rowCount == 0 || !result.rows[0].image_url) {
+            return res.status(404).json({
+                error: 'Image not found for given book ID.',
             });
         }
+
+        res.status(200).json({ image: result.rows[0].image_url });
+    } catch (error) {
+        console.error('Database query error on GET /books/:bookId/image');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
-);
+});
 
 /**
  * @api {get} /books/:bookId/small-image Retrieve small image of a book
@@ -1082,39 +1090,38 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
  * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
-        const bookId: number = parseInt(req.params.bookId);
+    const bookId: number = parseInt(req.params.bookId);
 
-        if (isNaN(bookId) || bookId <= 0) {
-            return res.status(400).json({
-                error: 'Invalid book ID parameter. It must be a number and positive.'
-            });
-        }
+    if (isNaN(bookId) || bookId <= 0) {
+        return res.status(400).json({
+            error: 'Invalid book ID parameter. It must be a number and positive.',
+        });
+    }
 
-        try {
-            const query: string = `
+    try {
+        const query: string = `
                 SELECT small_image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-            const result = await pool.query(query, [bookId]);
+        const result = await pool.query(query, [bookId]);
 
-            if (result.rowCount === 0 || !result.rows[0].small_image_url) {
-                return res.status(404).json({
-                    error: 'Small image not found for given book ID.'
-                });
-            }
-        
-            res.status(200).json({ image: result.rows[0].small_image_url});
-        } catch (error) {
-            console.error('Database query error on GET /books/:bookId/small-image');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
+        if (result.rowCount === 0 || !result.rows[0].small_image_url) {
+            return res.status(404).json({
+                error: 'Small image not found for given book ID.',
             });
         }
+
+        res.status(200).json({ image: result.rows[0].small_image_url });
+    } catch (error) {
+        console.error('Database query error on GET /books/:bookId/small-image');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
-);
+});
 
 /**
  * @api {get} /books/title/:title Fuzzy search books by title
