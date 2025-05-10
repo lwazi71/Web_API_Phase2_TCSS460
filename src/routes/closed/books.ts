@@ -3,6 +3,7 @@ import express, { NextFunction, Request, Response, Router } from 'express';
 // Access the connection to Postgres Database
 import { pool, validationFunctions } from '../../core/utilities';
 import { QueryResult } from 'pg';
+import './http_responses';
 
 const booksRouter: Router = express.Router();
 
@@ -145,19 +146,21 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         title,
         original_title,
         isbn13,
-        original_publication_year,
+        publication_year,
         image_url,
-        small_image_url,
+        image_small_url,
+        authors,
     } = request.body;
 
-    // Validate input
+    // Validate required input
     if (
         !title ||
         !original_title ||
         !isbn13 ||
-        !original_publication_year ||
+        !publication_year ||
         !image_url ||
-        !small_image_url
+        !image_small_url ||
+        !authors
     ) {
         return response.status(400).send({
             message: 'Invalid input data',
@@ -165,29 +168,57 @@ booksRouter.post('/', async (request: Request, response: Response) => {
     }
 
     try {
-        const isbnNumber = BigInt(isbn13);
-        const dummyBookId = Math.floor(Math.random() * 1000000);
-
+        const id = Math.floor(Math.random() * 1_000_000);
         const insertQuery = `
-            INSERT INTO books (book_id, isbn13, original_publication_year, original_title, title, image_url, small_image_url)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            RETURNING book_id, isbn13, original_publication_year, original_title, title, image_url, small_image_url
+            INSERT INTO books (
+                id, isbn13, authors, publication_year,
+                original_title, title,
+                rating_avg, rating_count,
+                rating_1_star, rating_2_star, rating_3_star,
+                rating_4_star, rating_5_star,
+                image_url, image_small_url
+            )
+            VALUES ($1, $2, $3, $4, $5, $6,
+                    0, 0, 0, 0, 0, 0, 0,
+                    $7, $8)
+                RETURNING *
         `;
         const values = [
-            dummyBookId,
-            isbnNumber,
-            original_publication_year,
+            id,
+            BigInt(isbn13),
+            authors,
+            publication_year,
             original_title,
             title,
             image_url,
-            small_image_url,
+            image_small_url,
         ];
 
         const result = await pool.query(insertQuery, values);
+        const book = result.rows[0];
 
-        response.status(201).send({
-            book: result.rows[0],
-        });
+        const formattedBook: IBook = {
+            isbn13: Number(book.isbn13),
+            authors: book.authors,
+            publication: book.publication_year,
+            original_title: book.original_title,
+            title: book.title,
+            ratings: {
+                average: book.rating_avg,
+                count: book.rating_count,
+                rating_1: book.rating_1_star,
+                rating_2: book.rating_2_star,
+                rating_3: book.rating_3_star,
+                rating_4: book.rating_4_star,
+                rating_5: book.rating_5_star,
+            },
+            icons: {
+                large: book.image_url,
+                small: book.image_small_url,
+            },
+        };
+
+        response.status(201).send({ book: formattedBook });
     } catch (error) {
         console.error('DB Query error on POST /books');
         console.error(error);
@@ -321,6 +352,7 @@ booksRouter.get(
         }
     }
 );
+
 /**
  * @api {get} /books Retrieve all books (paginated)
  * @apiName GetAllBooks
@@ -343,15 +375,11 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 
     try {
         const booksQuery = `
-    SELECT 
-        b.*, 
-        STRING_AGG(a.author, ', ') AS authors
-    FROM books b
-    JOIN authors a ON b.book_id = a.book_id
-    GROUP BY b.book_id
-    ORDER BY b.book_id
-    LIMIT $1 OFFSET $2
-`;
+            SELECT *
+            FROM books
+            ORDER BY id
+                LIMIT $1 OFFSET $2
+        `;
         const countQuery = `SELECT COUNT(*) FROM books`;
 
         const [booksResult, countResult] = await Promise.all([
@@ -361,8 +389,29 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 
         const total = parseInt(countResult.rows[0].count);
 
+        const books: IBook[] = booksResult.rows.map((book: any): IBook => ({
+            isbn13: Number(book.isbn13),
+            authors: book.authors,
+            publication: book.publication_year,
+            original_title: book.original_title,
+            title: book.title,
+            ratings: {
+                average: book.rating_avg,
+                count: book.rating_count,
+                rating_1: book.rating_1_star,
+                rating_2: book.rating_2_star,
+                rating_3: book.rating_3_star,
+                rating_4: book.rating_4_star,
+                rating_5: book.rating_5_star,
+            },
+            icons: {
+                large: book.image_url,
+                small: book.image_small_url,
+            },
+        }));
+
         response.send({
-            books: booksResult.rows,
+            books,
             total,
             page,
             limit,
@@ -774,5 +823,44 @@ booksRouter.patch(
         }
     }
 );
+
+/**
+ * @api {delete} /books/:isbn13 Delete a book by ISBN-13
+ * @apiName DeleteBook
+ * @apiGroup Books
+ *
+ * @apiParam {BigInt} isbn13 ISBN-13 number of the book to delete.
+ *
+ * @apiSuccess {String} message Confirmation of deletion.
+ *
+ * @apiError (404) NotFound Book not found.
+ * @apiError (500) ServerError "server error - contact support"
+ */
+booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
+    const { isbn13 } = request.params;
+
+    try {
+        const isbnNumber = BigInt(isbn13); // Validate it's a proper BigInt
+
+        const deleteQuery = `DELETE FROM books WHERE isbn13 = $1 RETURNING *`;
+        const result = await pool.query(deleteQuery, [isbnNumber]);
+
+        if (result.rowCount === 0) {
+            return response.status(404).send({
+                message: `Book with ISBN ${isbn13} not found.`,
+            });
+        }
+
+        response.send({
+            message: `Book with ISBN ${isbn13} has been deleted.`,
+        });
+    } catch (error) {
+        console.error('DB Query error on DELETE /books/:isbn13');
+        console.error(error);
+        response.status(500).send({
+            message: 'server error - contact support',
+        });
+    }
+});
 
 export { booksRouter };
