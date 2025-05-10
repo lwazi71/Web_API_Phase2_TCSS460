@@ -146,10 +146,9 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         title,
         original_title,
         isbn13,
-        publication_year,
+        original_publication_year,
         image_url,
-        image_small_url,
-        authors,
+        small_image_url
     } = request.body;
 
     // Validate required input
@@ -157,10 +156,9 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         !title ||
         !original_title ||
         !isbn13 ||
-        !publication_year ||
+        !original_publication_year ||
         !image_url ||
-        !image_small_url ||
-        !authors
+        !small_image_url
     ) {
         return response.status(400).send({
             message: 'Invalid input data',
@@ -168,54 +166,37 @@ booksRouter.post('/', async (request: Request, response: Response) => {
     }
 
     try {
-        const id = Math.floor(Math.random() * 1_000_000);
+        const book_id = Math.floor(Math.random() * 1_000_000);
+
         const insertQuery = `
             INSERT INTO books (
-                id, isbn13, authors, publication_year,
-                original_title, title,
-                rating_avg, rating_count,
-                rating_1_star, rating_2_star, rating_3_star,
-                rating_4_star, rating_5_star,
-                image_url, image_small_url
+                book_id, isbn13, original_publication_year,
+                original_title, title, image_url, small_image_url
             )
-            VALUES ($1, $2, $3, $4, $5, $6,
-                    0, 0, 0, 0, 0, 0, 0,
-                    $7, $8)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
                 RETURNING *
         `;
         const values = [
-            id,
+            book_id,
             BigInt(isbn13),
-            authors,
-            publication_year,
+            original_publication_year,
             original_title,
             title,
             image_url,
-            image_small_url,
+            small_image_url
         ];
 
         const result = await pool.query(insertQuery, values);
         const book = result.rows[0];
 
-        const formattedBook: IBook = {
+        const formattedBook = {
+            book_id: book.book_id,
             isbn13: Number(book.isbn13),
-            authors: book.authors,
-            publication: book.publication_year,
+            original_publication_year: book.original_publication_year,
             original_title: book.original_title,
             title: book.title,
-            ratings: {
-                average: book.rating_avg,
-                count: book.rating_count,
-                rating_1: book.rating_1_star,
-                rating_2: book.rating_2_star,
-                rating_3: book.rating_3_star,
-                rating_4: book.rating_4_star,
-                rating_5: book.rating_5_star,
-            },
-            icons: {
-                large: book.image_url,
-                small: book.image_small_url,
-            },
+            image_url: book.image_url,
+            small_image_url: book.small_image_url
         };
 
         response.status(201).send({ book: formattedBook });
@@ -227,6 +208,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         });
     }
 });
+
 
 /**
  * @api {get} /books/author/:author Retrieve books by author
@@ -840,7 +822,7 @@ booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
     const { isbn13 } = request.params;
 
     try {
-        const isbnNumber = BigInt(isbn13); // Validate it's a proper BigInt
+        const isbnNumber = BigInt(isbn13); // Validate input as BigInt
 
         const deleteQuery = `DELETE FROM books WHERE isbn13 = $1 RETURNING *`;
         const result = await pool.query(deleteQuery, [isbnNumber]);
@@ -862,5 +844,6 @@ booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
         });
     }
 });
+
 
 export { booksRouter };
