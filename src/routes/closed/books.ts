@@ -165,7 +165,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         small_image_url
     } = request.body;
 
-    // Validate required input
+    // validate required input
     if (
         !title ||
         !original_title ||
@@ -176,7 +176,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         !authors
     ) {
         return response.status(400).send({
-            error: 'One or more body parameters are invalid.',
+            error: 'One or more body parameters are missing.',
         });
     }
 
