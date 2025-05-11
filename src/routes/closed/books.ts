@@ -118,8 +118,9 @@ function mwValidAuthor(
  *
  * @apiBody {String} title Full title of the book. (required)
  * @apiBody {String} original_title Original title of the book. (required)
- * @apiBody {BigInt} isbn13 ISBN-13 number (10–13 digits). (required)
+ * @apiBody {BigInt} isbn13 ISBN-13 number (13 digits). (required)
  * @apiBody {Number} original_publication_year Year the book was published. (required)
+ * @apiBody {String} authors Comma-separated list of authors. (required)
  * @apiBody {String} image_url Link to the large image of the book. (required)
  * @apiBody {String} small_image_url Link to the small image of the book. (required)
  *
@@ -128,25 +129,38 @@ function mwValidAuthor(
  *    HTTP/1.1 201 Created
  *    {
  *      "book": {
- *          "book_id": 12345,
  *          "isbn13": 9781234567897,
- *          "original_publication_year": 1999,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
  *          "original_title": "Example Title",
  *          "title": "Example Title Full",
- *          "image_url": "http://example.com/large.jpg",
- *          "small_image_url": "http://example.com/small.jpg"
+ *          "ratings": {
+ *              "average": 0,
+ *              "count": 0,
+ *              "rating_1": 0,
+ *              "rating_2": 0,
+ *              "rating_3": 0,
+ *              "rating_4": 0,
+ *              "rating_5": 0
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
  *      }
  *    }
  *
- * @apiError (400) InvalidInput "Invalid input data"
- * @apiError (500) ServerError "server error - contact support"
+ * @apiError (400) InvalidInput "One or more body parameters are invalid."
+ * @apiError (500) ServerError "Server error - contact support"
  */
+
 booksRouter.post('/', async (request: Request, response: Response) => {
     const {
-        title,
-        original_title,
         isbn13,
+        authors,
         original_publication_year,
+        original_title,
+        title,
         image_url,
         small_image_url
     } = request.body;
@@ -158,26 +172,27 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         !isbn13 ||
         !original_publication_year ||
         !image_url ||
-        !small_image_url
+        !small_image_url || 
+        !authors
     ) {
         return response.status(400).send({
-            message: 'Invalid input data',
+            error: 'One or more body parameters are invalid.',
         });
     }
 
     try {
-        const book_id = Math.floor(Math.random() * 1_000_000);
+        await pool.query('BEGIN');
 
-        const insertQuery = `
+        // insert the book
+        const insertBookQuery = `
             INSERT INTO books (
-                book_id, isbn13, original_publication_year,
+                isbn13, original_publication_year,
                 original_title, title, image_url, small_image_url
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-                RETURNING *
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
         `;
         const values = [
-            book_id,
             BigInt(isbn13),
             original_publication_year,
             original_title,
@@ -185,22 +200,53 @@ booksRouter.post('/', async (request: Request, response: Response) => {
             image_url,
             small_image_url
         ];
-
-        const result = await pool.query(insertQuery, values);
+        const result = await pool.query(insertBookQuery, values);
         const book = result.rows[0];
 
-        const formattedBook = {
-            book_id: book.book_id,
+        // insert authors
+        const authorList = authors.split(',').map((a: string) => a.trim());
+        const insertAuthorQuery = `
+            INSERT INTO authors (book_id, author) VALUES ($1, $2)
+        `;
+        for (const author of authorList) {
+            await pool.query(insertAuthorQuery, [book.book_id, author])
+        }
+
+        // insert default ratings
+        const insertRatingsQuery = `
+            INSERT INTO ratings (
+                book_id, ratings_1, ratings_2, ratings_3, ratings_4, ratings_5
+            )
+            VALUES ($1, 0, 0, 0, 0, 0)
+        `;
+        await pool.query(insertRatingsQuery, [book.book_id])
+
+        await pool.query('COMMIT');
+
+        const formattedBook: IBook = {
             isbn13: Number(book.isbn13),
-            original_publication_year: book.original_publication_year,
+            authors: authorList.join(', '),
+            publication: book.original_publication_year,
             original_title: book.original_title,
             title: book.title,
-            image_url: book.image_url,
-            small_image_url: book.small_image_url
+            ratings: {
+                average: 0,
+                count: 0,
+                rating_1: 0,
+                rating_2: 0,
+                rating_3: 0,
+                rating_4: 0,
+                rating_5: 0
+            },
+            icons: {
+                large: book.image_url,
+                small: book.small_image_url
+            }
         };
 
         response.status(201).send({ book: formattedBook });
     } catch (error) {
+        await pool.query('ROLLBACK');
         console.error('DB Query error on POST /books');
         console.error(error);
         response.status(500).send({
@@ -208,7 +254,6 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         });
     }
 });
-
 
 /**
  * @api {get} /books/author/:author Retrieve books by author
