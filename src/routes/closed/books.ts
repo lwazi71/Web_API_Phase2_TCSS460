@@ -215,31 +215,61 @@ booksRouter.post('/', async (request: Request, response: Response) => {
 
 /**
  * @api {get} /books/author/:author Retrieve books by author
+ *
+ * @apiDescription Request to get books by a certain author. This will retrieve all books that the author wrote and co-wrote.
+ *
  * @apiName GetBooksByAuthor
  * @apiGroup Books
  *
  * @apiParam {String} author Author's full name (URL encoded if needed).
  *
- * @apiSuccess {Object[]} books List of books by the given author.
+ * @apiSuccess {Object[]} books List of books written by the given author.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
+ *
  * @apiSuccessExample {json} Success-Response:
  *    HTTP/1.1 200 OK
  *    {
  *      "books": [
  *        {
- *          "book_id": 12345,
  *          "isbn13": 9781234567897,
- *          "original_publication_year": 1999,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
  *          "original_title": "Example Title",
  *          "title": "Example Title Full",
- *          "image_url": "http://example.com/large.jpg",
- *          "small_image_url": "http://example.com/small.jpg",
- *          "formatted": "{9781234567897} - Example Title Full"
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
  *        }
  *      ]
  *    }
  *
- * @apiError (404) AuthorNotFound "Author not found"
- * @apiError (500) ServerError "server error - contact support"
+ * @apiError (404: Author not found) {String} message "Author not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.get(
     '/author/:author',
@@ -607,14 +637,50 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
  * @apiQuery {Number{1.0-5.0}} [minRating=1.0] Minimum average rating (inclusive)
  * @apiQuery {Number{1.0-5.0}} [maxRating=5.0] Maximum average rating (inclusive)
  *
- * @apiSuccess {Object[]} books List of books matching the rating range
- * @apiSuccess {Number} books.book_id ID number of the book
- * @apiSuccess {String} books.isbn13 ISBN-13 identifier
- * @apiSuccess {Number} books.original_publication_year Original publication year of the book
- * @apiSuccess {String} books.original_title Original title of the book
- * @apiSuccess {String} books.title Title of the book
- * @apiSuccess {String} books.image_url URL for image for the book
- * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ * @apiSuccess {Object[]} books List of books included in the average rating range.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "books": [
+ *        {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
+ *        }
+ *      ]
+ *    }
  *
  * @apiError (400: Invalid or missing Rating Range) {String} message "Invalid or missing Rating Range - please refer to documentation"
  * @apiError (404: No books found in range) {String} message "No books found in range"
@@ -695,17 +761,52 @@ booksRouter.get(
  * @apiGroup Books
  *
  * @apiParam {Number} bookid The ID number of the book
- * @apiParam {Number} numRatings Number of ratings to set for the given rating level
+ * @apiParam {Number} numRatings Positive number of ratings to set for the given rating level
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} book Book object with updated number of ratings at selected rating level.
+ * @apiSuccess {Number} book.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} book.authors Comma-separated list of authors.
+ * @apiSuccess {Number} book.publication Year the book was originally published.
+ * @apiSuccess {String} book.original_title Original title of the book.
+ * @apiSuccess {String} book.title Title of the book.
+ * @apiSuccess {Object} book.ratings Rating statistics.
+ * @apiSuccess {Number} book.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} book.ratings.count Total number of ratings.
+ * @apiSuccess {Number} book.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} book.icons Image URLs.
+ * @apiSuccess {String} book.icons.large Full-size image URL.
+ * @apiSuccess {String} book.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *              "average": 4.27,
+ *              "count": 5823,
+ *              "rating_1": 123,
+ *              "rating_2": 432,
+ *              "rating_3": 1342,
+ *              "rating_4": 2341,
+ *              "rating_5": 1585
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
+ *      }
+ *    }
  *
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
@@ -785,20 +886,6 @@ booksRouter.patch(
                     message: 'Book not found',
                 });
             }
-
-            // if (result.rowCount == 1) {
-            //     const { book_id, ...ratings } = result.rows[0];
-            //     const updatedRatings: IRatings = {
-            //         average: calcRatingsAverage(result.rows[0]),
-            //         count: calcRatingsCount(result.rows[0]),
-            //         ...ratings,
-            //     };
-            //     response.status(200).send(updatedRatings);
-            // } else {
-            //     response.status(404).send({
-            //         message: 'Book not found',
-            //     });
-            // }
         } catch (error) {
             console.error('DB Query error on PATCH ratings');
             console.error(error);
@@ -823,13 +910,48 @@ booksRouter.patch(
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} book Book object with incremented (+1) ratings at selected rating level.
+ * @apiSuccess {Number} book.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} book.authors Comma-separated list of authors.
+ * @apiSuccess {Number} book.publication Year the book was originally published.
+ * @apiSuccess {String} book.original_title Original title of the book.
+ * @apiSuccess {String} book.title Title of the book.
+ * @apiSuccess {Object} book.ratings Rating statistics.
+ * @apiSuccess {Number} book.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} book.ratings.count Total number of ratings.
+ * @apiSuccess {Number} book.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} book.icons Image URLs.
+ * @apiSuccess {String} book.icons.large Full-size image URL.
+ * @apiSuccess {String} book.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *              "average": 4.27,
+ *              "count": 5823,
+ *              "rating_1": 123,
+ *              "rating_2": 432,
+ *              "rating_3": 1342,
+ *              "rating_4": 2341,
+ *              "rating_5": 1585
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
+ *      }
+ *    }
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
@@ -933,13 +1055,48 @@ booksRouter.patch(
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} book Book object with decremented (-1) ratings at selected rating level.
+ * @apiSuccess {Number} book.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} book.authors Comma-separated list of authors.
+ * @apiSuccess {Number} book.publication Year the book was originally published.
+ * @apiSuccess {String} book.original_title Original title of the book.
+ * @apiSuccess {String} book.title Title of the book.
+ * @apiSuccess {Object} book.ratings Rating statistics.
+ * @apiSuccess {Number} book.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} book.ratings.count Total number of ratings.
+ * @apiSuccess {Number} book.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} book.icons Image URLs.
+ * @apiSuccess {String} book.icons.large Full-size image URL.
+ * @apiSuccess {String} book.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *              "average": 4.27,
+ *              "count": 5823,
+ *              "rating_1": 123,
+ *              "rating_2": 432,
+ *              "rating_3": 1342,
+ *              "rating_4": 2341,
+ *              "rating_5": 1585
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
+ *      }
+ *    }
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
@@ -1032,20 +1189,35 @@ booksRouter.patch(
 /**
  * @api {get} /closed/books/bookid/:bookid/ratings Get ratings for a specific book
  *
- * @apiDescription Request to ratings for a book. Book is retrieved from the book ID.
+ * @apiDescription Request to ratings for a book. Book is retrieved from the book ID. Only the ratings are returned, not the full book info.
  *
  * @apiName GetBookRatings
  * @apiGroup Books
  *
  * @apiParam {Number} bookid The ID number of the book
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} ratings Rating statistics.
+ * @apiSuccess {Number} ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} ratings.count Total number of ratings.
+ * @apiSuccess {Number} ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} ratings.rating_5 Count of 5-star ratings.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "ratings": {
+ *          "average": 4.27,
+ *          "count": 5823,
+ *          "rating_1": 123,
+ *          "rating_2": 432,
+ *          "rating_3": 1342,
+ *          "rating_4": 2341,
+ *          "rating_5": 1585
+ *      }
+ *    }
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (404: Book not found) {String} message "Book not found"
@@ -1067,13 +1239,13 @@ booksRouter.get(
             const result = await pool.query(theQuery, [bookid]);
 
             if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
+                const { book_id, ...theRatings } = result.rows[0];
+                const ratings: IRatings = {
                     average: calcRatingsAverage(result.rows[0]),
                     count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
+                    ...theRatings,
                 };
-                response.status(200).send(updatedRatings);
+                response.status(200).send({ ratings });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -1266,6 +1438,64 @@ booksRouter.get('/title/:title', async (req: Request, res: Response) => {
 
 export { booksRouter };
 
+/**
+ * @api {delete} /closed/books/author/:author Delete books based on author
+ *
+ * @apiDescription Deletes books based on the books author. This will delete all books that the author wrote and co-wrote.
+ *
+ * @apiName DeleteBooksByAuthor
+ * @apiGroup Books
+ *
+ * @apiParam {String} author The author's full name
+ *
+ * @apiSuccess {Object[]} books List of books that have been deleted based on the given author.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "books": [
+ *        {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
+ *        }
+ *      ]
+ *    }
+ *
+ * @apiError (404: Author not found) {String} message "Author not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
 booksRouter.delete(
     '/author/:author',
     async (request: Request, response: Response) => {
