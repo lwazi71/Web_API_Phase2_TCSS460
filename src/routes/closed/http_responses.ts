@@ -12,7 +12,7 @@ interface IUrlIcon {
     large: string;
     small: string;
 }
-    
+
 interface IBook {
     isbn13: number;
     authors: string;

@@ -3,7 +3,7 @@
 DROP TABLE IF EXISTS books;
 
 CREATE TABLE books(
- book_id INT PRIMARY KEY,
+ book_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
  isbn13 BIGINT UNIQUE,
  original_publication_year INT,
  original_title TEXT,
