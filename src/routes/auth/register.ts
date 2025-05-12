@@ -32,13 +32,13 @@ const isValidPassword = (password: string): boolean => {
     const trimmed = password.trim();
     const regex = new RegExp(
         '^' +
-            '(?=.*[a-z])' + // at least one lowercase
-            '(?=.*[A-Z])' + // at least one uppercase
-            '(?=.*\\d)' + // at least one digit
-            '(?=.*!)' + // at least one '!' symbol
-            '(?!.*(.)\\1{2,})' + // no 3+ consecutive duplicate characters
-            '[A-Za-z\\d!]{10,}' + // only A-Za-z0-9! and at least 10 characters
-            '$'
+        '(?=.*[a-z])' + // at least one lowercase
+        '(?=.*[A-Z])' + // at least one uppercase
+        '(?=.*\\d)' + // at least one digit
+        '(?=.*!)' + // at least one '!' symbol
+        '(?!.*(.)\\1{2,})' + // no 3+ consecutive duplicate characters
+        '[A-Za-z\\d!]{10,}' + // only A-Za-z0-9! and at least 10 characters
+        '$'
     );
 
     return regex.test(trimmed);
@@ -82,11 +82,11 @@ const isValidRole = (role: string): boolean => {
 
 const isValidEmail = (email: string): boolean => {
     if (!isStringProvided(email)) return false;
-  
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
-  };
-  
+};
+
 
 /**
  * @apiBody {String} role a role for this user [1–5]
@@ -131,7 +131,14 @@ const phoneMiddlewareCheck = (
         });
     }
 };
-// middleware functions may be defined elsewhere!
+/**
+ * @apiBody {String} email a users email 
+ * Must:
+ * - Be a valid email format (`example@domain.com`)
+ * - Contain exactly one "@" symbol
+ * - Have a valid domain and top-level domain (e.g., ".com")
+ * - Not contain spaces
+ */
 const emailMiddlewareCheck = (
     request: Request,
     response: Response,
@@ -182,12 +189,6 @@ const passwordMiddlewareCheck = (
  * @apiBody {String} firstname a users first name
  * @apiBody {String} lastname a users last name
  * @apiBody {String} email a users email *unique
- * Must:
- * - Be a valid email format (`example@domain.com`)
- * - Contain exactly one "@" symbol
- * - Have a valid domain and top-level domain (e.g., ".com")
- * - Not contain spaces
- * 
  * @apiBody {String} password a users password
  * @apiBody {String} username a username *unique
  * @apiBody {String} role a role for this user [1-5]

@@ -451,72 +451,62 @@ booksRouter.get(
 
             const result = await pool.query(query, [isbn])
 
-
-            if (result.rowCount !== null && result.rowCount > 0) {
-                response.send({
-                    book: result.rows[0],
-                });
-            } else {
-                response.status(404).send({
-                    message: 'Book not found',
-
-                    if(result.rowCount === 0) {
-                    return res.status(404).json({
-                        message: `Book with ISBN of '${isbn}' not found.`
-
-                    });
-                }
-
-                const book: IBook = (() => {
-                    const {
-                        isbn13,
-                        authors,
-                        original_publication_year,
-                        original_title,
-                        title,
-                        image_url,
-                        small_image_url,
-                        ratings_1 = 0,
-                        ratings_2 = 0,
-                        ratings_3 = 0,
-                        ratings_4 = 0,
-                        ratings_5 = 0
-                    } = result.rows[0];
-
-                    const count = calcRatingsCount(result.rows[0]);
-                    const average = count === 0 ? 0 : calcRatingsAverage(result.rows[0]);
-
-                    return {
-                        isbn13: Number(isbn13),
-                        authors,
-                        publication: original_publication_year,
-                        original_title,
-                        title,
-                        ratings: {
-                            average,
-                            count,
-                            rating_1: ratings_1,
-                            rating_2: ratings_2,
-                            rating_3: ratings_3,
-                            rating_4: ratings_4,
-                            rating_5: ratings_5,
-                        },
-                        icons: {
-                            large: image_url,
-                            small: small_image_url,
-                        }
-                    };
-                })();
-
-                res.status(200).json({ book })
-            } catch (error) {
-                console.error('DB Query error on GET /books/isbn/:isbn');
-                console.error(error);
-                res.status(500).send({
-                    message: 'server error - contact support',
+            if (result.rowCount === 0) {
+                return res.status(404).json({
+                    message: `Book with ISBN of '${isbn}' not found.`
                 });
             }
+
+            const book: IBook = (() => {
+                const {
+                    isbn13,
+                    authors,
+                    original_publication_year,
+                    original_title,
+                    title,
+                    image_url,
+                    small_image_url,
+                    ratings_1 = 0,
+                    ratings_2 = 0,
+                    ratings_3 = 0,
+                    ratings_4 = 0,
+                    ratings_5 = 0
+                } = result.rows[0];
+
+                const count = calcRatingsCount(result.rows[0]);
+                const average = count === 0 ? 0 : calcRatingsAverage(result.rows[0]);
+
+                return {
+                    isbn13: Number(isbn13),
+                    authors,
+                    publication: original_publication_year,
+                    original_title,
+                    title,
+                    ratings: {
+                        average,
+                        count,
+                        rating_1: ratings_1,
+                        rating_2: ratings_2,
+                        rating_3: ratings_3,
+                        rating_4: ratings_4,
+                        rating_5: ratings_5,
+                    },
+                    icons: {
+                        large: image_url,
+                        small: small_image_url,
+                    }
+                };
+            })();
+
+            res.status(200).json({ book })
+        } catch (error) {
+            console.error('DB Query error on GET /books/isbn/:isbn');
+            console.error(error);
+            res.status(500).send({
+                message: 'server error - contact support',
+            });
         }
+    }
 );
 
 /**
@@ -588,13 +578,6 @@ booksRouter.get('/', async (request: Request, response: Response) => {
             LIMIT $1 OFFSET $2
         `;
 
-
-        SELECT *
-            FROM books
-            ORDER BY id
-                LIMIT $1 OFFSET $2
-        `;
-
         const countQuery = `SELECT COUNT(*) FROM books`;
 
         const [booksResult, countResult] = await Promise.all([
@@ -625,32 +608,7 @@ booksRouter.get('/', async (request: Request, response: Response) => {
         }));
         const total = parseInt(countResult.rows[0].count);
 
-
         response.status(200).json({
-
-        const books: IBook[] = booksResult.rows.map((book: any): IBook => ({
-            isbn13: Number(book.isbn13),
-            authors: book.authors,
-            publication: book.publication_year,
-            original_title: book.original_title,
-            title: book.title,
-            ratings: {
-                average: book.rating_avg,
-                count: book.rating_count,
-                rating_1: book.rating_1_star,
-                rating_2: book.rating_2_star,
-                rating_3: book.rating_3_star,
-                rating_4: book.rating_4_star,
-                rating_5: book.rating_5_star,
-            },
-            icons: {
-                large: book.image_url,
-                small: book.image_small_url,
-            },
-        }));
-
-        response.send({
-
             books,
             total,
             page,
@@ -663,6 +621,7 @@ booksRouter.get('/', async (request: Request, response: Response) => {
         });
     }
 });
+
 /**
  * @api {get} /books/age Retrieve books by age (publication year)
  * @apiName GetBooksByAge
@@ -723,7 +682,6 @@ booksRouter.get('/', async (request: Request, response: Response) => {
  * @apiError (400) InvalidPageParameter "Invalid page query parameter. It must be zero or greater and less than 100."
  * @apiError (500) ServerError "server error - contact support"
  */
-
 booksRouter.get('/age', async (req: Request, res: Response) => {
     if (!req.query.order) {
         return res.status(400).json({
@@ -777,7 +735,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
                 JOIN authors a ON b.book_id = a.book_id
                 LEFT JOIN ratings r ON b.book_id = r.book_id
                 GROUP BY b.book_id, r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
-                ORDER BY b.original_publication_year ${ orderInSQL }
+                ORDER BY b.original_publication_year ${orderInSQL}
                 LIMIT $1 OFFSET $2
             `;
 
@@ -1040,7 +998,7 @@ booksRouter.patch(
         try {
             const theUpdateQuery = `
                 UPDATE ratings
-                SET ${ rateLevel } = $1
+                SET ${rateLevel} = $1
                 FROM books
                 WHERE ratings.book_id = books.book_id AND books.book_id = $2
                 RETURNING ratings.*
@@ -1057,33 +1015,33 @@ booksRouter.patch(
             }
 
             const theQuery = `
-SELECT
-b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    STRING_AGG(a.author, ', ') AS authors,
-        r.ratings_1,
-        r.ratings_2,
-        r.ratings_3,
-        r.ratings_4,
-        r.ratings_5
-                FROM books b
-                JOIN authors a ON b.book_id = a.book_id
-                LEFT JOIN ratings r ON b.book_id = r.book_id
-                WHERE b.book_id = $1
-                GROUP BY
-b.book_id,
-    b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
-        `;
+                SELECT
+                b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                        r.ratings_1,
+                        r.ratings_2,
+                        r.ratings_3,
+                        r.ratings_4,
+                        r.ratings_5
+                                FROM books b
+                                JOIN authors a ON b.book_id = a.book_id
+                                LEFT JOIN ratings r ON b.book_id = r.book_id
+                                WHERE b.book_id = $1
+                                GROUP BY
+                b.book_id,
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
             const result = await pool.query(theQuery, [bookid]);
 
@@ -1185,7 +1143,7 @@ booksRouter.patch(
         try {
             const theUpdateQuery = `
                 UPDATE ratings
-                SET ${ rateLevel } = $1
+                SET ${rateLevel} = $1
                 FROM books
                 WHERE ratings.book_id = books.book_id AND books.book_id = $2
                 RETURNING ratings.*
@@ -1202,33 +1160,33 @@ booksRouter.patch(
             }
 
             const theQuery = `
-SELECT
-b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    STRING_AGG(a.author, ', ') AS authors,
-        r.ratings_1,
-        r.ratings_2,
-        r.ratings_3,
-        r.ratings_4,
-        r.ratings_5
-                FROM books b
-                JOIN authors a ON b.book_id = a.book_id
-                LEFT JOIN ratings r ON b.book_id = r.book_id
-                WHERE b.book_id = $1
-                GROUP BY
-b.book_id,
-    b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
-        `;
+                SELECT
+                b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                        r.ratings_1,
+                        r.ratings_2,
+                        r.ratings_3,
+                        r.ratings_4,
+                        r.ratings_5
+                                FROM books b
+                                JOIN authors a ON b.book_id = a.book_id
+                                LEFT JOIN ratings r ON b.book_id = r.book_id
+                                WHERE b.book_id = $1
+                                GROUP BY
+                b.book_id,
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
             const result = await pool.query(theQuery, [bookid]);
 
@@ -1330,7 +1288,7 @@ booksRouter.patch(
         try {
             const theUpdateQuery = `
                 UPDATE ratings
-                SET ${ rateLevel } = $1
+                SET ${rateLevel} = $1
                 FROM books
                 WHERE ratings.book_id = books.book_id AND books.book_id = $2
                 RETURNING ratings.*
@@ -1347,33 +1305,33 @@ booksRouter.patch(
             }
 
             const theQuery = `
-SELECT
-b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    STRING_AGG(a.author, ', ') AS authors,
-        r.ratings_1,
-        r.ratings_2,
-        r.ratings_3,
-        r.ratings_4,
-        r.ratings_5
-                FROM books b
-                JOIN authors a ON b.book_id = a.book_id
-                LEFT JOIN ratings r ON b.book_id = r.book_id
-                WHERE b.book_id = $1
-                GROUP BY
-b.book_id,
-    b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
-        `;
+                SELECT
+                b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                        r.ratings_1,
+                        r.ratings_2,
+                        r.ratings_3,
+                        r.ratings_4,
+                        r.ratings_5
+                                FROM books b
+                                JOIN authors a ON b.book_id = a.book_id
+                                LEFT JOIN ratings r ON b.book_id = r.book_id
+                                WHERE b.book_id = $1
+                                GROUP BY
+                b.book_id,
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
             const result = await pool.query(theQuery, [bookid]);
 
@@ -1418,12 +1376,12 @@ booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
 
         if (result.rowCount === 0) {
             return response.status(404).send({
-                message: `Book with ISBN ${ isbn13 } not found.`,
+                message: `Book with ISBN ${isbn13} not found.`,
             });
         }
 
         response.send({
-            message: `Book with ISBN ${ isbn13 } has been deleted.`,
+            message: `Book with ISBN ${isbn13} has been deleted.`,
         });
     } catch (error) {
         console.error('DB Query error on DELETE /books/:isbn13');
@@ -1659,31 +1617,31 @@ booksRouter.get('/title/:title', async (req: Request, res: Response) => {
         await pool.query('SET pg_trgm.similarity_threshold = 0.2');
 
         const searchQuery = `
-SELECT
-b.book_id,
-    b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5,
-    (r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5) AS rating_count,
-        (
-            (1 * r.ratings_1 + 2 * r.ratings_2 + 3 * r.ratings_3 + 4 * r.ratings_4 + 5 * r.ratings_5):: FLOAT /
-                NULLIF((r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5), 0)
-                ) AS rating_average,
-    b.image_url,
-    b.small_image_url,
-    STRING_AGG(a.author, ', ') AS authors
-            FROM books b
-            JOIN authors a ON b.book_id = a.book_id
-            JOIN ratings r ON b.book_id = r.book_id
-            WHERE b.title % $1
-            GROUP BY b.book_id, b.isbn13, b.original_publication_year, b.original_title, b.title,
-    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5,
-    b.image_url, b.small_image_url
-            ORDER BY similarity(b.title, $1) DESC
-            LIMIT 10;
-`;
+            SELECT
+            b.book_id,
+                b.isbn13,
+                b.original_publication_year,
+                b.original_title,
+                b.title,
+                r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5,
+                (r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5) AS rating_count,
+                    (
+                        (1 * r.ratings_1 + 2 * r.ratings_2 + 3 * r.ratings_3 + 4 * r.ratings_4 + 5 * r.ratings_5):: FLOAT /
+                            NULLIF((r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5), 0)
+                            ) AS rating_average,
+                b.image_url,
+                b.small_image_url,
+                STRING_AGG(a.author, ', ') AS authors
+                        FROM books b
+                        JOIN authors a ON b.book_id = a.book_id
+                        JOIN ratings r ON b.book_id = r.book_id
+                        WHERE b.title % $1
+                        GROUP BY b.book_id, b.isbn13, b.original_publication_year, b.original_title, b.title,
+                r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5,
+                b.image_url, b.small_image_url
+                        ORDER BY similarity(b.title, $1) DESC
+                        LIMIT 10;
+        `;
 
         const result = await pool.query(searchQuery, [title]);
 
@@ -1717,7 +1675,6 @@ b.book_id,
         res.status(500).json({ message: 'server error - contact support' });
     }
 });
-export { booksRouter };
 
 /**
  * @api {delete} /closed/books/author/:author Delete books based on author
@@ -1789,35 +1746,35 @@ booksRouter.delete(
 
             // Start by getting all the books from the author to send back later
             const getBooksQuery = `
-SELECT
-b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    STRING_AGG(a.author, ', ') AS authors,
-        r.ratings_1,
-        r.ratings_2,
-        r.ratings_3,
-        r.ratings_4,
-        r.ratings_5
-                FROM books b
-                JOIN authors a ON b.book_id = a.book_id
-                LEFT JOIN ratings r ON b.book_id = r.book_id
-                WHERE b.book_id IN(
-            SELECT book_id FROM authors WHERE author = $1
-        )
-                GROUP BY
-b.book_id,
-    b.isbn13,
-    b.original_publication_year,
-    b.original_title,
-    b.title,
-    b.image_url,
-    b.small_image_url,
-    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
-        `;
+                SELECT
+                b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                        r.ratings_1,
+                        r.ratings_2,
+                        r.ratings_3,
+                        r.ratings_4,
+                        r.ratings_5
+                                FROM books b
+                                JOIN authors a ON b.book_id = a.book_id
+                                LEFT JOIN ratings r ON b.book_id = r.book_id
+                                WHERE b.book_id IN(
+                            SELECT book_id FROM authors WHERE author = $1
+                        )
+                                GROUP BY
+                b.book_id,
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
             const booksResult = await client.query(getBooksQuery, [author]);
 
@@ -1835,7 +1792,7 @@ b.book_id,
                 SELECT book_id
                 FROM authors
                 WHERE author = $1;
-`;
+            `;
 
             const bookIDsResult = await client.query(getBookIDsQuery, [author]);
 
@@ -1875,3 +1832,5 @@ b.book_id,
         }
     }
 );
+
+export { booksRouter };
