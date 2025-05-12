@@ -1443,7 +1443,6 @@ booksRouter.get(
  */
 booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
     const bookId: number = parseInt(req.params.bookId);
-    const bookId: number = parseInt(req.params.bookId);
 
     if (isNaN(bookId) || bookId <= 0) {
         return res.status(400).json({
@@ -1453,14 +1452,11 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
 
     try {
         const query: string = `
-    try {
-        const query: string = `
                 SELECT image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-        const result = await pool.query(query, [bookId]);
         const result = await pool.query(query, [bookId]);
 
         if (result.rowCount == 0 || !result.rows[0].image_url) {
@@ -1501,7 +1497,6 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
  */
 booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
     const bookId: number = parseInt(req.params.bookId);
-    const bookId: number = parseInt(req.params.bookId);
 
     if (isNaN(bookId) || bookId <= 0) {
         return res.status(400).json({
@@ -1511,31 +1506,28 @@ booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
 
     try {
         const query: string = `
-        try {
-            const query: string = `
                 SELECT small_image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-            const result = await pool.query(query, [bookId]);
-            const result = await pool.query(query, [bookId]);
+        const result = await pool.query(query, [bookId]);
 
-            if (result.rowCount === 0 || !result.rows[0].small_image_url) {
-                return res.status(404).json({
-                    error: 'Small image not found for given book ID.'
-                });
-            }
-
-            res.status(200).json({ image: result.rows[0].small_image_url });
-        } catch (error) {
-            console.error('Database query error on GET /books/:bookId/small-image');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
+        if (result.rowCount === 0 || !result.rows[0].small_image_url) {
+            return res.status(404).json({
+                error: 'Small image not found for given book ID.'
             });
         }
+
+        res.status(200).json({ image: result.rows[0].small_image_url });
+    } catch (error) {
+        console.error('Database query error on GET /books/:bookId/small-image');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
+}
 );
 
 /**
