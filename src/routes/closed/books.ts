@@ -177,7 +177,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         !isbn13 ||
         !original_publication_year ||
         !image_url ||
-        !small_image_url || 
+        !small_image_url ||
         !authors
     ) {
         return response.status(400).send({
@@ -992,7 +992,6 @@ booksRouter.patch(
 );
 
 /**
-Thomas-Branch
  * @api {delete} /books/:isbn13 Delete a book by ISBN-13
  * @apiName DeleteBook
  * @apiGroup Books
@@ -1031,7 +1030,7 @@ booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
     }
 });
 
-=======
+/**
  * @api {get} /closed/books/bookid/:bookid/ratings Get ratings for a specific book
  *
  * @apiDescription Request to ratings for a book. Book is retrieved from the book ID.
