@@ -10,6 +10,41 @@ const booksRouter: Router = express.Router();
 const isStringProvided = validationFunctions.isStringProvided;
 const isNumberProvided = validationFunctions.isNumberProvided;
 
+interface BookWithAuthors {
+    book_id: number;
+    isbn13: number;
+    original_publication_year: number;
+    original_title: string | null;
+    title: string;
+    image_url: string | null;
+    small_image_url: string | null;
+    authors: string; // comma-separated list
+}
+interface IRatings {
+    average: number;
+    count: number;
+    rating_1: number;
+    rating_2: number;
+    rating_3: number;
+    rating_4: number;
+    rating_5: number;
+}
+
+interface IUrlIcon {
+    large: string;
+    small: string;
+}
+
+interface IBook {
+    isbn13: number;
+    authors: string;
+    publication: number;
+    original_title: string;
+    title: string;
+    ratings: IRatings;
+    icons: IUrlIcon;
+}
+
 // For formatting output
 const formatKeep = (resultRow) => ({
     ...resultRow,
@@ -303,7 +338,7 @@ booksRouter.get(
 
         pool.query(theQuery, values)
             .then((result) => {
-                if (result.rowCount > 0) {
+                if (result.rowCount !== null && result.rowCount > 0) {
                     response.send({
                         books: result.rows.map(formatKeep),
                     });
@@ -387,9 +422,19 @@ booksRouter.get(
 
             const result = await pool.query(query, [isbn])
 
+
+            if (result.rowCount !== null && result.rowCount > 0) {
+                response.send({
+                    book: result.rows[0],
+                });
+            } else {
+                response.status(404).send({
+                    message: 'Book not found',
+
             if (result.rowCount === 0) {
                 return res.status(404).json({
                     message: `Book with ISBN of '${isbn}' not found.`
+
                 });
             }
 
@@ -450,13 +495,30 @@ booksRouter.get(
  * @apiName GetAllBooks
  * @apiGroup Books
  *
- * @apiParam {Number} [page=1] Page number for pagination.
- * @apiParam {Number} [limit=10] Number of books per page.
+ * @apiQuery {Number} [page=1] Page number for pagination.
+ * @apiQuery {Number} [limit=10] Number of books per page.
  *
  * @apiSuccess {Object[]} books List of books for the page.
+ * @apiSuccess {Number} books.isbn13 ISBN-13.
+ * @apiSuccess {String} books.authors Comma-separated authors.
+ * @apiSuccess {Number} books.publication Publication year.
+ * @apiSuccess {String} books.original_title Original title.
+ * @apiSuccess {String} books.title Title.
+ * @apiSuccess {Object} books.ratings Ratings breakdown.
+ * @apiSuccess {Number} books.ratings.average Average rating.
+ * @apiSuccess {Number} books.ratings.count Total ratings count.
+ * @apiSuccess {Number} books.ratings.rating_1 1-star count.
+ * @apiSuccess {Number} books.ratings.rating_2 2-star count.
+ * @apiSuccess {Number} books.ratings.rating_3 3-star count.
+ * @apiSuccess {Number} books.ratings.rating_4 4-star count.
+ * @apiSuccess {Number} books.ratings.rating_5 5-star count.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Large icon URL.
+ * @apiSuccess {String} books.icons.small Small icon URL.
+ *
  * @apiSuccess {Number} total Total number of books.
  * @apiSuccess {Number} page Current page number.
- * @apiSuccess {Number} limit Number of books per page.
+ * @apiSuccess {Number} limit Books per page.
  *
  * @apiError (500 Internal Server Error) {String} message "server error - contact support"
  */
@@ -467,11 +529,43 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 
     try {
         const booksQuery = `
+                    SELECT 
+                b.book_id,                          
+                b.isbn13,
+                b.original_title,
+                b.title,
+                b.original_publication_year AS publication,
+                b.image_url,
+                b.small_image_url,
+                r.ratings_1,
+                r.ratings_2,
+                r.ratings_3,
+                r.ratings_4,
+                r.ratings_5,
+                (r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5) AS rating_count,
+                (
+                    (1 * r.ratings_1 + 2 * r.ratings_2 + 3 * r.ratings_3 + 4 * r.ratings_4 + 5 * r.ratings_5)::FLOAT /
+                    NULLIF((r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5), 0)
+                ) AS rating_average,
+                STRING_AGG(a.author, ', ') AS authors
+            FROM books b
+            JOIN authors a ON b.book_id = a.book_id
+            JOIN ratings r ON b.book_id = r.book_id
+            GROUP BY 
+                b.book_id, b.isbn13, b.original_title, b.title, b.original_publication_year,
+                b.image_url, b.small_image_url,
+                r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            ORDER BY b.book_id
+            LIMIT $1 OFFSET $2
+        `;
+
+
             SELECT *
             FROM books
             ORDER BY id
                 LIMIT $1 OFFSET $2
         `;
+
         const countQuery = `SELECT COUNT(*) FROM books`;
 
         const [booksResult, countResult] = await Promise.all([
@@ -479,7 +573,31 @@ booksRouter.get('/', async (request: Request, response: Response) => {
             pool.query(countQuery),
         ]);
 
+        const books = booksResult.rows.map((row) => ({
+            book_id: row.book_id,
+            isbn13: row.isbn13.toString(),
+            authors: row.authors,
+            publication: row.publication,
+            original_title: row.original_title,
+            title: row.title,
+            ratings: {
+                average: parseFloat(row.rating_average),
+                count: parseInt(row.rating_count),
+                rating_1: row.ratings_1,
+                rating_2: row.ratings_2,
+                rating_3: row.ratings_3,
+                rating_4: row.ratings_4,
+                rating_5: row.ratings_5,
+            },
+            icons: {
+                large: row.image_url,
+                small: row.small_image_url,
+            },
+        }));
         const total = parseInt(countResult.rows[0].count);
+
+
+        response.status(200).json({
 
         const books: IBook[] = booksResult.rows.map((book: any): IBook => ({
             isbn13: Number(book.isbn13),
@@ -503,20 +621,19 @@ booksRouter.get('/', async (request: Request, response: Response) => {
         }));
 
         response.send({
+
             books,
             total,
             page,
             limit,
         });
     } catch (error) {
-        console.error('DB Query error on GET /books');
-        console.error(error);
+        console.error('DB Query error on GET /books', error);
         response.status(500).send({
             message: 'server error - contact support',
         });
     }
 });
-
 /**
  * @api {get} /books/age Retrieve books by age (publication year)
  * @apiName GetBooksByAge
@@ -738,7 +855,7 @@ booksRouter.get(
 
         pool.query(theQuery, values)
             .then((result) => {
-                if (result.rowCount > 0) {
+                if (result.rowCount !== null && result.rowCount > 0) {
                     response.send({
                         books: result.rows.map(formatKeep),
                     });
@@ -1294,36 +1411,25 @@ booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
  *
  * @apiDescription
  * Returns a list of books whose titles closely match the provided input using trigram similarity.
- * Useful for cases where the title is mistyped or partially remembered.
- *
- * @apiExample {curl} Example usage:
- *     curl -X GET http://localhost:4000/c/books/title/name%20of%20wind \
- *     -H "Authorization: Bearer {accessToken}"
+ * Output matches IBook structure.
  *
  * @apiSuccess {Object[]} books List of matched books.
- * @apiSuccess {Number} books.book_id Book ID.
- * @apiSuccess {BigInt} books.isbn13 ISBN-13 number.
- * @apiSuccess {Number} books.original_publication_year Year of publication.
- * @apiSuccess {String} books.original_title Original title of the book.
- * @apiSuccess {String} books.title Title of the book.
- * @apiSuccess {String} books.image_url Link to the large image of the book.
- * @apiSuccess {String} books.small_image_url Link to the small image of the book.
- *
- * @apiSuccessExample {json} Success Response:
- * HTTP/1.1 200 OK
- * {
- *   "books": [
- *     {
- *       "book_id": 123,
- *       "isbn13": 9781234567897,
- *       "original_publication_year": 2007,
- *       "original_title": "The Name of the Wind",
- *       "title": "Name of the Wind",
- *       "image_url": "http://example.com/large.jpg",
- *       "small_image_url": "http://example.com/small.jpg"
- *     }
- *   ]
- * }
+ * @apiSuccess {Number} books.isbn13 ISBN-13.
+ * @apiSuccess {String} books.authors Comma-separated authors.
+ * @apiSuccess {Number} books.publication Publication year.
+ * @apiSuccess {String} books.original_title Original title.
+ * @apiSuccess {String} books.title Title.
+ * @apiSuccess {Object} books.ratings Ratings breakdown.
+ * @apiSuccess {Number} books.ratings.average Average rating.
+ * @apiSuccess {Number} books.ratings.count Total ratings count.
+ * @apiSuccess {Number} books.ratings.rating_1 1-star count.
+ * @apiSuccess {Number} books.ratings.rating_2 2-star count.
+ * @apiSuccess {Number} books.ratings.rating_3 3-star count.
+ * @apiSuccess {Number} books.ratings.rating_4 4-star count.
+ * @apiSuccess {Number} books.ratings.rating_5 5-star count.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Large icon URL.
+ * @apiSuccess {String} books.icons.small Small icon URL.
  *
  * @apiError (400: Invalid Title) {String} message "Missing or invalid title parameter"
  * @apiError (500: Server Error) {String} message "server error - contact support"
@@ -1338,21 +1444,68 @@ booksRouter.get('/title/:title', async (req: Request, res: Response) => {
     }
 
     try {
+        // Optional: set threshold for looser matches
+        await pool.query('SET pg_trgm.similarity_threshold = 0.2');
+
         const searchQuery = `
-            SELECT * FROM books
-            WHERE title % $1
-            ORDER BY similarity(title, $1) DESC
+            SELECT 
+                b.book_id,
+                b.isbn13,
+                b.original_publication_year,
+                b.original_title,
+                b.title,
+                r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5,
+                (r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5) AS rating_count,
+                (
+                (1 * r.ratings_1 + 2 * r.ratings_2 + 3 * r.ratings_3 + 4 * r.ratings_4 + 5 * r.ratings_5)::FLOAT /
+                NULLIF((r.ratings_1 + r.ratings_2 + r.ratings_3 + r.ratings_4 + r.ratings_5), 0)
+                ) AS rating_average,
+                b.image_url,
+                b.small_image_url,
+                STRING_AGG(a.author, ', ') AS authors
+            FROM books b
+            JOIN authors a ON b.book_id = a.book_id
+            JOIN ratings r ON b.book_id = r.book_id
+            WHERE b.title % $1
+            GROUP BY b.book_id, b.isbn13, b.original_publication_year, b.original_title, b.title, 
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5,
+                    b.image_url, b.small_image_url
+            ORDER BY similarity(b.title, $1) DESC
             LIMIT 10;
         `;
+
         const result = await pool.query(searchQuery, [title]);
 
-        res.status(200).json({ books: result.rows });
+        const books = result.rows.map((row) => ({
+            book_id: row.book_id,
+            isbn13: row.isbn13.toString(), // matches test regex
+            title: row.title,
+            original_title: row.original_title,
+            original_publication_year: row.original_publication_year,
+            image_url: row.image_url,
+            small_image_url: row.small_image_url,
+            authors: row.authors,
+            ratings: {
+                average: parseFloat(row.rating_average || 0),
+                count: parseInt(row.rating_count),
+                rating_1: row.ratings_1,
+                rating_2: row.ratings_2,
+                rating_3: row.ratings_3,
+                rating_4: row.ratings_4,
+                rating_5: row.ratings_5,
+            },
+            icons: {
+                large: row.image_url,
+                small: row.small_image_url,
+            },
+        }));
+
+        res.status(200).json({ books });
     } catch (error) {
         console.error('DB error on GET /title/:title', error);
         res.status(500).json({ message: 'server error - contact support' });
     }
 });
-
 export { booksRouter };
 
 booksRouter.delete(
