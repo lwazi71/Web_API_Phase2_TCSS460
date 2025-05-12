@@ -70,11 +70,12 @@ async function getCurrentNumAtRateLevel(
         const numRatings = await pool.query(ratingQuery, [bookid]);
 
         if (numRatings.rowCount === 1) {
-            currRatings = numRatings.rows[0][rateLevel];
+            return numRatings.rows[0][rateLevel];
         } else {
             response.status(404).send({
                 message: 'Book not found',
             });
+            return undefined;
         }
     } catch (error) {
         console.error('DB Query error on PATCH ratings');
@@ -82,9 +83,8 @@ async function getCurrentNumAtRateLevel(
         response.status(500).send({
             message: 'server error - contact support',
         });
+        return undefined;
     }
-
-    return currRatings;
 }
 
 function getFormattedRatings(result: QueryResult): IRatings {

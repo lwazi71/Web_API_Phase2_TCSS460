@@ -988,122 +988,6 @@
 			"response": []
 		},
 		{
-			"name": "DELETE books by author",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"const response = pm.response.json();",
-							"",
-							"pm.test(\"Response status should be 200\", () => {",
-							"    pm.response.to.have.status(200);",
-							"})",
-							"",
-							"pm.test(\"Response body has books object\", () => {",
-							"    pm.expect(response).to.have.property(\"books\");",
-							"    pm.expect(response.books).to.be.an(\"array\");",
-							"})",
-							"",
-							"pm.test(\"Response has 'books' array\", function () {",
-							"    const json = pm.response.json();",
-							"    pm.expect(json).to.have.property(\"books\");",
-							"    pm.expect(json.books).to.be.an(\"array\");",
-							"});",
-							"",
-							"if (pm.response.json().books.length > 0) {",
-							"    const book = pm.response.json().books[0];",
-							"",
-							"  pm.test(\"Book has all required fields\", function () {",
-							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
-							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
-							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
-							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
-							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
-							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
-							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
-							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
-							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
-							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
-							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
-							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
-							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
-							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
-							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
-							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
-							"",
-							"});",
-							"} else {",
-							"    pm.test(\"Returns empty books array when no match\", function () {",
-							"        pm.expect(pm.response.json().books).to.be.an(\"array\").that.is.empty;",
-							"    });",
-							"}"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/closed/books/author/Alastair%20Reynolds",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"closed",
-						"books",
-						"author",
-						"Alastair%20Reynolds"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "DELETE 404 books by author",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"const response = pm.response.json();",
-							"",
-							"pm.test(\"Response status should be 404\", () => {",
-							"    pm.response.to.have.status(404);",
-							"})",
-							"",
-							"pm.test(\"Response body has message object\", () => {",
-							"    pm.expect(response).to.have.property(\"message\");",
-							"    pm.expect(response.message).to.equal(\"Author not found\");",
-							"})"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "DELETE",
-				"header": [],
-				"url": {
-					"raw": "{{base_url}}/closed/books/author/Owen%20Orlic",
-					"host": [
-						"{{base_url}}"
-					],
-					"path": [
-						"closed",
-						"books",
-						"author",
-						"Owen%20Orlic"
-					]
-				}
-			},
-			"response": []
-		},
-		{
 			"name": "GET books by author",
 			"event": [
 				{
@@ -1358,6 +1242,177 @@
 						"bookid",
 						"200000",
 						"ratings"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "POST book for test",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"",
+							"",
+							"const title = pm.variables.replaceIn('{{$randomCatchPhrase}}')",
+							"pm.environment.set(\"title\", title);",
+							"pm.environment.set(\"original_title\", \"Original Title \" + title);",
+							"",
+							"const numAuthors = Math.floor(Math.random() * 4) + 1;",
+							"let authors = [];",
+							"for (let i = 0; i < numAuthors; i++) {",
+							"    pm.environment.set(\"isbn\", 9999999999990 + i); // assuming the delete route is run on this isbn right after this request",
+							"    authors.push(pm.variables.replaceIn('Owen Orlic'));",
+							"}",
+							"const authorsString = `\"${authors.join(', ')}\"`; ",
+							"pm.environment.set(\"authors\", authorsString);",
+							"",
+							"pm.environment.set(\"original_publication_year\", Math.floor(Math.random() * (2025 - 1800 + 1)) + 1800);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"isbn13\": {{isbn}},\n    \"authors\": {{authors}},\n    \"original_publication_year\": {{original_publication_year}},\n    \"original_title\": \"{{original_title}}\",\n    \"title\": \"{{title}}\",\n    \"image_url\": \"http://example.com/large.jpg\",\n    \"small_image_url\": \"http://example.com/small.jpg\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE books by author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has books object\", () => {",
+							"    pm.expect(response).to.have.property(\"books\");",
+							"    pm.expect(response.books).to.be.an(\"array\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'books' array\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"books\");",
+							"    pm.expect(json.books).to.be.an(\"array\");",
+							"});",
+							"",
+							"if (pm.response.json().books.length > 0) {",
+							"    const book = pm.response.json().books[0];",
+							"",
+							"  pm.test(\"Book has all required fields\", function () {",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"",
+							"});",
+							"} else {",
+							"    pm.test(\"Returns empty books array when no match\", function () {",
+							"        pm.expect(pm.response.json().books).to.be.an(\"array\").that.is.empty;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/author/Owen%20Orlic",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"author",
+						"Owen%20Orlic"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE 404 books by author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Author not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/author/Owen%20Orlic",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"author",
+						"Owen%20Orlic"
 					]
 				}
 			},
