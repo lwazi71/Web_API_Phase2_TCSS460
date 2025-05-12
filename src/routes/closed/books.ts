@@ -1,7 +1,11 @@
 // express is the framework we're going to use to handle requests
 import express, { NextFunction, Request, Response, Router } from 'express';
 // Access the connection to Postgres Database
-import { pool, validationFunctions } from '../../core/utilities';
+import {
+    pool,
+    validationFunctions,
+    formattingFunctions,
+} from '../../core/utilities';
 import { QueryResult } from 'pg';
 import './http_responses';
 
@@ -9,11 +13,17 @@ const booksRouter: Router = express.Router();
 
 const isStringProvided = validationFunctions.isStringProvided;
 const isNumberProvided = validationFunctions.isNumberProvided;
+const calcRatingsCount = formattingFunctions.calcRatingsCount;
+const calcRatingsAverage = formattingFunctions.calcRatingsAverage;
+const getCurrentNumAtRateLevel = formattingFunctions.getCurrentNumAtRateLevel;
+const getFormattedRatings = formattingFunctions.getFormattedRatings;
+const getFormattedBook = formattingFunctions.getFormattedBook;
+const getFormattedBooksList = formattingFunctions.getFormattedBooksList;
 
 // For formatting output
 const formatKeep = (resultRow) => ({
     ...resultRow,
-    formatted: `{${resultRow.isbn13}} - ${resultRow.title}`,
+    //formatted: `{${resultRow.isbn13}} - ${resultRow.title}`,
 });
 
 function mwValidBookID(
@@ -262,64 +272,118 @@ booksRouter.post('/', async (request: Request, response: Response) => {
 
 /**
  * @api {get} /books/author/:author Retrieve books by author
+ *
+ * @apiDescription Request to get books by a certain author. This will retrieve all books that the author wrote and co-wrote.
+ *
  * @apiName GetBooksByAuthor
  * @apiGroup Books
  *
  * @apiParam {String} author Author's full name (URL encoded if needed).
  *
- * @apiSuccess {Object[]} books List of books by the given author.
+ * @apiSuccess {Object[]} books List of books written by the given author.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
+ *
  * @apiSuccessExample {json} Success-Response:
  *    HTTP/1.1 200 OK
  *    {
  *      "books": [
  *        {
- *          "book_id": 12345,
  *          "isbn13": 9781234567897,
- *          "original_publication_year": 1999,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
  *          "original_title": "Example Title",
  *          "title": "Example Title Full",
- *          "image_url": "http://example.com/large.jpg",
- *          "small_image_url": "http://example.com/small.jpg",
- *          "formatted": "{9781234567897} - Example Title Full"
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
  *        }
  *      ]
  *    }
  *
- * @apiError (404) AuthorNotFound "Author not found"
- * @apiError (500) ServerError "server error - contact support"
+ * @apiError (404: Author not found) {String} message "Author not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
  */
 booksRouter.get(
     '/author/:author',
     //mwValidAuthor,
-    (request: Request, response: Response) => {
+    async (request: Request, response: Response) => {
         const author = request.params.author;
-        const theQuery = `
-        SELECT books.*
-        FROM books
-        JOIN authors ON books.book_id = authors.book_id
-        WHERE authors.author = $1
-    `;
-        const values = [author];
 
-        pool.query(theQuery, values)
-            .then((result) => {
-                if (result.rowCount > 0) {
-                    response.send({
-                        books: result.rows.map(formatKeep),
-                    });
-                } else {
-                    response.status(404).send({
-                        message: 'Author not found',
-                    });
-                }
-            })
-            .catch((error) => {
-                console.error('DB Query error on GET /author/:author');
-                console.error(error);
-                response.status(500).send({
-                    message: 'server error - contact support',
+        try {
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id IN (
+                    SELECT book_id FROM authors WHERE author = $1
+                )
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [author]);
+
+            if (result.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Author not found',
                 });
+            }
+
+            const books: IBook[] = getFormattedBooksList(result);
+
+            response.status(200).json({ books });
+        } catch (error) {
+            console.error('DB Query error on GET /author/:author');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
             });
+        }
     }
 );
 
@@ -700,14 +764,50 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
  * @apiQuery {Number{1.0-5.0}} [minRating=1.0] Minimum average rating (inclusive)
  * @apiQuery {Number{1.0-5.0}} [maxRating=5.0] Maximum average rating (inclusive)
  *
- * @apiSuccess {Object[]} books List of books matching the rating range
- * @apiSuccess {Number} books.book_id ID number of the book
- * @apiSuccess {String} books.isbn13 ISBN-13 identifier
- * @apiSuccess {Number} books.original_publication_year Original publication year of the book
- * @apiSuccess {String} books.original_title Original title of the book
- * @apiSuccess {String} books.title Title of the book
- * @apiSuccess {String} books.image_url URL for image for the book
- * @apiSuccess {String} books.small_image_url URL for smaller image for the book
+ * @apiSuccess {Object[]} books List of books included in the average rating range.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "books": [
+ *        {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
+ *        }
+ *      ]
+ *    }
  *
  * @apiError (400: Invalid or missing Rating Range) {String} message "Invalid or missing Rating Range - please refer to documentation"
  * @apiError (404: No books found in range) {String} message "No books found in range"
@@ -722,39 +822,60 @@ booksRouter.get(
         const maxRating: number =
             parseFloat(request.query.maxRating as string) || 5.0;
 
-        const theQuery = `
-        SELECT books.*
-        FROM books
-        JOIN ratings ON books.book_id = ratings.book_id
-        WHERE 
-            (
-                (ratings_1::float + 2 * ratings_2::float + 3 * ratings_3::float + 4 * ratings_4::float + 5 * ratings_5::float) 
-                / (ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5) 
-            )
-            BETWEEN $1 AND $2 
-        `;
+        try {
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE (
+                        (ratings_1::float + 2 * ratings_2::float + 3 * ratings_3::float + 4 * ratings_4::float + 5 * ratings_5::float) 
+                        / (ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5) 
+                    )
+                    BETWEEN $1 AND $2 
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
-        const values = [minRating, maxRating];
+            const values = [minRating, maxRating];
 
-        pool.query(theQuery, values)
-            .then((result) => {
-                if (result.rowCount > 0) {
-                    response.send({
-                        books: result.rows.map(formatKeep),
-                    });
-                } else {
-                    response.status(404).send({
-                        message: 'No books found in range',
-                    });
-                }
-            })
-            .catch((error) => {
-                console.error('DB Query error on GET');
-                console.error(error);
-                response.status(500).send({
-                    message: 'server error - contact support',
+            const result = await pool.query(theQuery, values);
+
+            if (result.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'No books found in range',
                 });
+            }
+
+            const books: IBook[] = getFormattedBooksList(result);
+
+            response.status(200).json({ books });
+        } catch (error) {
+            console.error('DB Query error on GET');
+            console.error(error);
+            response.status(500).send({
+                message: 'server error - contact support',
             });
+        }
     }
 );
 
@@ -767,17 +888,52 @@ booksRouter.get(
  * @apiGroup Books
  *
  * @apiParam {Number} bookid The ID number of the book
- * @apiParam {Number} numRatings Number of ratings to set for the given rating level
+ * @apiParam {Number} numRatings Positive number of ratings to set for the given rating level
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} book Book object with updated number of ratings at selected rating level.
+ * @apiSuccess {Number} book.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} book.authors Comma-separated list of authors.
+ * @apiSuccess {Number} book.publication Year the book was originally published.
+ * @apiSuccess {String} book.original_title Original title of the book.
+ * @apiSuccess {String} book.title Title of the book.
+ * @apiSuccess {Object} book.ratings Rating statistics.
+ * @apiSuccess {Number} book.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} book.ratings.count Total number of ratings.
+ * @apiSuccess {Number} book.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} book.icons Image URLs.
+ * @apiSuccess {String} book.icons.large Full-size image URL.
+ * @apiSuccess {String} book.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *              "average": 4.27,
+ *              "count": 5823,
+ *              "rating_1": 123,
+ *              "rating_2": 432,
+ *              "rating_3": 1342,
+ *              "rating_4": 2341,
+ *              "rating_5": 1585
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
+ *      }
+ *    }
  *
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
@@ -800,7 +956,7 @@ booksRouter.patch(
         const rateLevel: string = 'ratings_' + rating;
 
         try {
-            const theQuery = `
+            const theUpdateQuery = `
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
@@ -810,16 +966,48 @@ booksRouter.patch(
 
             const values = [numRatings, bookid];
 
-            const result = await pool.query(theQuery, values);
+            const updatedResult = await pool.query(theUpdateQuery, values);
 
-            if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+            if (updatedResult.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Book not found',
+                });
+            }
+
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount === 1) {
+                const book: IBook = getFormattedBook(result);
+                response.status(200).json({ book });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -849,13 +1037,48 @@ booksRouter.patch(
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} book Book object with incremented (+1) ratings at selected rating level.
+ * @apiSuccess {Number} book.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} book.authors Comma-separated list of authors.
+ * @apiSuccess {Number} book.publication Year the book was originally published.
+ * @apiSuccess {String} book.original_title Original title of the book.
+ * @apiSuccess {String} book.title Title of the book.
+ * @apiSuccess {Object} book.ratings Rating statistics.
+ * @apiSuccess {Number} book.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} book.ratings.count Total number of ratings.
+ * @apiSuccess {Number} book.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} book.icons Image URLs.
+ * @apiSuccess {String} book.icons.large Full-size image URL.
+ * @apiSuccess {String} book.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *              "average": 4.27,
+ *              "count": 5823,
+ *              "rating_1": 123,
+ *              "rating_2": 432,
+ *              "rating_3": 1342,
+ *              "rating_4": 2341,
+ *              "rating_5": 1585
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
+ *      }
+ *    }
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
@@ -878,7 +1101,7 @@ booksRouter.patch(
         );
 
         try {
-            const theQuery = `
+            const theUpdateQuery = `
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
@@ -888,16 +1111,48 @@ booksRouter.patch(
 
             const values = [currRatings + 1, bookid];
 
-            const result = await pool.query(theQuery, values);
+            const updatedResult = await pool.query(theUpdateQuery, values);
 
-            if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+            if (updatedResult.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Book not found',
+                });
+            }
+
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount === 1) {
+                const book: IBook = getFormattedBook(result);
+                response.status(200).json({ book });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -927,13 +1182,48 @@ booksRouter.patch(
  *
  * @apiQuery {Number{1-5}} rating Rating level to update (e.g., 1, 2, 3, 4, 5)
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} book Book object with decremented (-1) ratings at selected rating level.
+ * @apiSuccess {Number} book.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} book.authors Comma-separated list of authors.
+ * @apiSuccess {Number} book.publication Year the book was originally published.
+ * @apiSuccess {String} book.original_title Original title of the book.
+ * @apiSuccess {String} book.title Title of the book.
+ * @apiSuccess {Object} book.ratings Rating statistics.
+ * @apiSuccess {Number} book.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} book.ratings.count Total number of ratings.
+ * @apiSuccess {Number} book.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} book.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} book.icons Image URLs.
+ * @apiSuccess {String} book.icons.large Full-size image URL.
+ * @apiSuccess {String} book.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "book": {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *              "average": 4.27,
+ *              "count": 5823,
+ *              "rating_1": 123,
+ *              "rating_2": 432,
+ *              "rating_3": 1342,
+ *              "rating_4": 2341,
+ *              "rating_5": 1585
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
+ *      }
+ *    }
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (400: Invalid rating) {String} message "Invalid or missing Rating - please refer to documentation"
@@ -956,7 +1246,7 @@ booksRouter.patch(
         );
 
         try {
-            const theQuery = `
+            const theUpdateQuery = `
                 UPDATE ratings
                 SET ${rateLevel} = $1
                 FROM books
@@ -966,16 +1256,48 @@ booksRouter.patch(
 
             const values = [currRatings - 1, bookid];
 
-            const result = await pool.query(theQuery, values);
+            const updatedResult = await pool.query(theUpdateQuery, values);
 
-            if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+            if (updatedResult.rowCount === 0) {
+                return response.status(404).json({
+                    message: 'Book not found',
+                });
+            }
+
+            const theQuery = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
+
+            const result = await pool.query(theQuery, [bookid]);
+
+            if (result.rowCount === 1) {
+                const book: IBook = getFormattedBook(result);
+                response.status(200).json({ book });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -1033,20 +1355,35 @@ booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
 /**
  * @api {get} /closed/books/bookid/:bookid/ratings Get ratings for a specific book
  *
- * @apiDescription Request to ratings for a book. Book is retrieved from the book ID.
+ * @apiDescription Request to ratings for a book. Book is retrieved from the book ID. Only the ratings are returned, not the full book info.
  *
  * @apiName GetBookRatings
  * @apiGroup Books
  *
  * @apiParam {Number} bookid The ID number of the book
  *
- * @apiSuccess {Number} average The book's average rating
- * @apiSuccess {Number} count The number of ratings the book has
- * @apiSuccess {Number} ratings_1 The number of 1 star ratings the book has
- * @apiSuccess {Number} ratings_2 The number of 2 star ratings the book has
- * @apiSuccess {Number} ratings_3 The number of 3 star ratings the book has
- * @apiSuccess {Number} ratings_4 The number of 4 star ratings the book has
- * @apiSuccess {Number} ratings_5 The number of 5 star ratings the book has
+ * @apiSuccess {Object} ratings Rating statistics.
+ * @apiSuccess {Number} ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} ratings.count Total number of ratings.
+ * @apiSuccess {Number} ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} ratings.rating_5 Count of 5-star ratings.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "ratings": {
+ *          "average": 4.27,
+ *          "count": 5823,
+ *          "rating_1": 123,
+ *          "rating_2": 432,
+ *          "rating_3": 1342,
+ *          "rating_4": 2341,
+ *          "rating_5": 1585
+ *      }
+ *    }
  *
  * @apiError (400: Invalid book ID) {String} message "Invalid or missing Book ID - please refer to documentation"
  * @apiError (404: Book not found) {String} message "Book not found"
@@ -1068,13 +1405,8 @@ booksRouter.get(
             const result = await pool.query(theQuery, [bookid]);
 
             if (result.rowCount == 1) {
-                const { book_id, ...ratings } = result.rows[0];
-                const updatedRatings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...ratings,
-                };
-                response.status(200).send(updatedRatings);
+                const ratings: IRatings = getFormattedRatings(result);
+                response.status(200).send({ ratings });
             } else {
                 response.status(404).send({
                     message: 'Book not found',
@@ -1089,91 +1421,6 @@ booksRouter.get(
         }
     }
 );
-
-/**
- * Calculates the total number of ratings across all rating levels (1–5).
- *
- * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
- *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
- *
- * @returns {number} The total count of all ratings combined.
- */
-function calcRatingsCount(result: QueryResult): number {
-    const count: number =
-        result['ratings_1'] +
-        result['ratings_2'] +
-        result['ratings_3'] +
-        result['ratings_4'] +
-        result['ratings_5'];
-    return count;
-}
-
-/**
- * Calculates the average rating of a book by weighting all the rating levels and dividing this by the
- * total number of ratings across all rating levels. Makes a call calcRatingsCount() to get total number of ratings.
- *
- * @param {QueryResult} result - An object containing the number of ratings for each level (e.g., ratings_1 through ratings_5).
- *                               It is expected to have numeric properties: ratings_1, ratings_2, ratings_3, ratings_4, and ratings_5.
- *
- * @returns {number} The average rating of a book.
- */
-function calcRatingsAverage(result: QueryResult): number {
-    const count: number = calcRatingsCount(result);
-    const weightedRatings: number =
-        result['ratings_1'] * 1 +
-        result['ratings_2'] * 2 +
-        result['ratings_3'] * 3 +
-        result['ratings_4'] * 4 +
-        result['ratings_5'] * 5;
-    return parseFloat((weightedRatings / count).toFixed(2));
-}
-
-/**
- * Asynchronously retrieves the current rating count at a specific rating level for a book.
- *
- * This function queries the database for the number of ratings at the provided rating level
- * for a given book ID, returning the count if the book exists, or sending an error response if not.
- *
- * @async
- * @param {Response} response - The Express response object, used to send the response back to the client.
- * @param {string} rateLevel - The rating level to check (e.g., "ratings_1", "ratings_2", etc.).
- * @param {bigint} bookid - The unique ID of the book for which the rating count is being fetched.
- * @returns {Promise<number>} A promise that resolves to the current count of ratings at the specified level.
- * @throws {Error} If a database query fails, an error message is logged, and a 500 status code is sent.
- * @throws {Error} If the book is not found, a 404 status code is sent with a relevant error message.
- */
-async function getCurrentNumAtRateLevel(
-    response: Response,
-    rateLevel: string,
-    bookid: bigint
-): Promise<number> {
-    let currRatings: number;
-    try {
-        const ratingQuery = `
-                SELECT ${rateLevel}
-                FROM ratings
-                WHERE ratings.book_id = $1
-            `;
-
-        const numRatings = await pool.query(ratingQuery, [bookid]);
-
-        if (numRatings.rowCount === 1) {
-            currRatings = numRatings.rows[0][rateLevel];
-        } else {
-            response.status(404).send({
-                message: 'Book not found',
-            });
-        }
-    } catch (error) {
-        console.error('DB Query error on PATCH ratings');
-        console.error(error);
-        response.status(500).send({
-            message: 'server error - contact support',
-        });
-    }
-
-    return currRatings;
-}
 
 /**
  * @api {get} /books/:bookId/image Retrieve image of a book
@@ -1196,6 +1443,7 @@ async function getCurrentNumAtRateLevel(
  */
 booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
     const bookId: number = parseInt(req.params.bookId);
+    const bookId: number = parseInt(req.params.bookId);
 
     if (isNaN(bookId) || bookId <= 0) {
         return res.status(400).json({
@@ -1205,11 +1453,14 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
 
     try {
         const query: string = `
+    try {
+        const query: string = `
                 SELECT image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
+        const result = await pool.query(query, [bookId]);
         const result = await pool.query(query, [bookId]);
 
         if (result.rowCount == 0 || !result.rows[0].image_url) {
@@ -1250,6 +1501,7 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
  */
 booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
     const bookId: number = parseInt(req.params.bookId);
+    const bookId: number = parseInt(req.params.bookId);
 
     if (isNaN(bookId) || bookId <= 0) {
         return res.status(400).json({
@@ -1259,28 +1511,31 @@ booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
 
     try {
         const query: string = `
+        try {
+            const query: string = `
                 SELECT small_image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-        const result = await pool.query(query, [bookId]);
+            const result = await pool.query(query, [bookId]);
+            const result = await pool.query(query, [bookId]);
 
-        if (result.rowCount === 0 || !result.rows[0].small_image_url) {
-            return res.status(404).json({
-                error: 'Small image not found for given book ID.'
+            if (result.rowCount === 0 || !result.rows[0].small_image_url) {
+                return res.status(404).json({
+                    error: 'Small image not found for given book ID.'
+                });
+            }
+
+            res.status(200).json({ image: result.rows[0].small_image_url });
+        } catch (error) {
+            console.error('Database query error on GET /books/:bookId/small-image');
+            console.error(error);
+            res.status(500).send({
+                error: 'server error - contact support',
             });
         }
-
-        res.status(200).json({ image: result.rows[0].small_image_url });
-    } catch (error) {
-        console.error('Database query error on GET /books/:bookId/small-image');
-        console.error(error);
-        res.status(500).send({
-            error: 'server error - contact support',
-        });
     }
-}
 );
 
 /**
@@ -1354,6 +1609,64 @@ booksRouter.get('/title/:title', async (req: Request, res: Response) => {
 
 export { booksRouter };
 
+/**
+ * @api {delete} /closed/books/author/:author Delete books based on author
+ *
+ * @apiDescription Deletes books based on the books author. This will delete all books that the author wrote and co-wrote.
+ *
+ * @apiName DeleteBooksByAuthor
+ * @apiGroup Books
+ *
+ * @apiParam {String} author The author's full name
+ *
+ * @apiSuccess {Object[]} books List of books that have been deleted based on the given author.
+ * @apiSuccess {Number} books.isbn13 ISBN-13 as a number.
+ * @apiSuccess {String} books.authors Comma-separated list of authors.
+ * @apiSuccess {Number} books.publication Year the book was originally published.
+ * @apiSuccess {String} books.original_title Original title of the book.
+ * @apiSuccess {String} books.title Title of the book.
+ * @apiSuccess {Object} books.ratings Rating statistics.
+ * @apiSuccess {Number} books.ratings.average Average rating (0–5, two decimals).
+ * @apiSuccess {Number} books.ratings.count Total number of ratings.
+ * @apiSuccess {Number} books.ratings.rating_1 Count of 1-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_2 Count of 2-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_3 Count of 3-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_4 Count of 4-star ratings.
+ * @apiSuccess {Number} books.ratings.rating_5 Count of 5-star ratings.
+ * @apiSuccess {Object} books.icons Image URLs.
+ * @apiSuccess {String} books.icons.large Full-size image URL.
+ * @apiSuccess {String} books.icons.small Small image URL.
+ *
+ * @apiSuccessExample {json} Success-Response:
+ *    HTTP/1.1 200 OK
+ *    {
+ *      "books": [
+ *        {
+ *          "isbn13": 9781234567897,
+ *          "authors": "Author One, Author Two",
+ *          "publication": 1999,
+ *          "original_title": "Example Title",
+ *          "title": "Example Title Full",
+ *          "ratings": {
+ *            "average": 4.27,
+ *            "count": 5823,
+ *            "rating_1": 123,
+ *            "rating_2": 432,
+ *            "rating_3": 1342,
+ *            "rating_4": 2341,
+ *            "rating_5": 1585
+ *          },
+ *          "icons": {
+ *            "large": "http://example.com/large.jpg",
+ *            "small": "http://example.com/small.jpg"
+ *          }
+ *        }
+ *      ]
+ *    }
+ *
+ * @apiError (404: Author not found) {String} message "Author not found"
+ * @apiError (500: Server error) {String} message "server error - contact support"
+ */
 booksRouter.delete(
     '/author/:author',
     async (request: Request, response: Response) => {
@@ -1366,10 +1679,34 @@ booksRouter.delete(
 
             // Start by getting all the books from the author to send back later
             const getBooksQuery = `
-                SELECT books.*
-                FROM books
-                JOIN authors ON books.book_id = authors.book_id
-                WHERE authors.author = $1
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.book_id IN (
+                    SELECT book_id FROM authors WHERE author = $1
+                )
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
             `;
 
             const booksResult = await client.query(getBooksQuery, [author]);
@@ -1402,6 +1739,7 @@ booksRouter.delete(
                 return;
             }
 
+            //all deletion happens via these 3
             const deleteFromRatingsQuery = `DELETE FROM ratings WHERE book_id = ANY($1)`;
             await client.query(deleteFromRatingsQuery, [bookIds]);
 
@@ -1412,9 +1750,10 @@ booksRouter.delete(
             await client.query(deleteFromAuthorsQuery, [bookIds, author]);
 
             await client.query('COMMIT');
-            response.status(200).send({
-                books: booksResult.rows.map(formatKeep),
-            });
+
+            const books: IBook[] = getFormattedBooksList(booksResult);
+
+            response.status(200).json({ books });
         } catch (error) {
             console.error('DB Query error on DELETE author');
             console.error(error);

@@ -1,0 +1,1399 @@
+{
+	"info": {
+		"_postman_id": "9bec78a5-5dc5-4c60-8441-3365dcd8c13a",
+		"name": "Books Final Tests",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "44168008",
+		"_collection_link": "https://owenorlic.postman.co/workspace/TCSS460~e844aaff-2bb1-41e5-981d-001f44b26395/collection/44168008-9bec78a5-5dc5-4c60-8441-3365dcd8c13a?action=share&source=collection_link&creator=44168008"
+	},
+	"item": [
+		{
+			"name": "GET books from avg rating range",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has books object\", () => {",
+							"    pm.expect(response).to.have.property(\"books\");",
+							"    pm.expect(response.books).to.be.an(\"array\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'books' array\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"books\");",
+							"    pm.expect(json.books).to.be.an(\"array\");",
+							"});",
+							"",
+							"if (pm.response.json().books.length > 0) {",
+							"    const book = pm.response.json().books[0];",
+							"",
+							"  pm.test(\"Book has all required fields\", function () {",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"",
+							"});",
+							"} else {",
+							"    pm.test(\"Returns empty books array when no match\", function () {",
+							"        pm.expect(pm.response.json().books).to.be.an(\"array\").that.is.empty;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/ratingRange?minRating=2.46&maxRating=2.47",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"ratingRange"
+					],
+					"query": [
+						{
+							"key": "minRating",
+							"value": "2.46"
+						},
+						{
+							"key": "maxRating",
+							"value": "2.47"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET 400 books from avg rating range (invalid range)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Rating Range - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/ratingRange?minRating=4.00&maxRating=3.00",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"ratingRange"
+					],
+					"query": [
+						{
+							"key": "minRating",
+							"value": "4.00"
+						},
+						{
+							"key": "maxRating",
+							"value": "3.00"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET 404 books from avg rating range",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"No books found in range\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/ratingRange?minRating=1.00&maxRating=1.01",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"ratingRange"
+					],
+					"query": [
+						{
+							"key": "minRating",
+							"value": "1.00"
+						},
+						{
+							"key": "maxRating",
+							"value": "1.01"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH edit number of ratings for a book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has book object\", () => {",
+							"    pm.expect(response).to.have.property(\"book\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'book' object\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"book\");",
+							"    pm.expect(json.book).to.be.an(\"object\");",
+							"});",
+							"",
+							"",
+							"pm.test(\"Book has all required fields\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/numOfRatings/76611?rating=4",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"numOfRatings",
+						"76611"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "4"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 edit number of ratings for a book (Invalid Number of Ratings)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Number of Ratings - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/numOfRatings/-76611?rating=4",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"numOfRatings",
+						"-76611"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "4"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 edit number of ratings for a book (Invalid book ID)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Book ID - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/-2/numOfRatings/76611?rating=4",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"-2",
+						"numOfRatings",
+						"76611"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "4"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 edit number of ratings for a book (invalid range)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Rating - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/numOfRatings/76611?rating=6",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"numOfRatings",
+						"76611"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "6"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 404 edit number of ratings for a book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Book not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/200000/numOfRatings/76611?rating=4",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"200000",
+						"numOfRatings",
+						"76611"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "4"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH inc number of ratings for a book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has book object\", () => {",
+							"    pm.expect(response).to.have.property(\"book\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'book' object\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"book\");",
+							"    pm.expect(json.book).to.be.an(\"object\");",
+							"});",
+							"",
+							"",
+							"pm.test(\"Book has all required fields\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/incRating?rating=5",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"incRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 inc number of ratings for a book (Invalid book ID)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Book ID - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/-2/incRating?rating=5",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"-2",
+						"incRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 inc number of ratings for a book (invalid range)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Rating - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/incRating?rating=0",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"incRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "0"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 404 inc number of ratings for a book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Book not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/20000/incRating?rating=5",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"20000",
+						"incRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "5"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH dec number of ratings for a book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has book object\", () => {",
+							"    pm.expect(response).to.have.property(\"book\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'book' object\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"book\");",
+							"    pm.expect(json.book).to.be.an(\"object\");",
+							"});",
+							"",
+							"",
+							"pm.test(\"Book has all required fields\", function () {",
+							"    const book = pm.response.json().book;",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/decRating?rating=2",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"decRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 dec number of ratings for a book (Invalid book ID)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Book ID - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/-2/decRating?rating=2",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"-2",
+						"decRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 400 dec number of ratings for a book (invalid range)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Rating - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/decRating?rating=-3",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"decRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "-3"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "PATCH 404 dec number of ratings for a book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Book not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/200000/decRating?rating=2",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"200000",
+						"decRating"
+					],
+					"query": [
+						{
+							"key": "rating",
+							"value": "2"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE books by author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has books object\", () => {",
+							"    pm.expect(response).to.have.property(\"books\");",
+							"    pm.expect(response.books).to.be.an(\"array\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'books' array\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"books\");",
+							"    pm.expect(json.books).to.be.an(\"array\");",
+							"});",
+							"",
+							"if (pm.response.json().books.length > 0) {",
+							"    const book = pm.response.json().books[0];",
+							"",
+							"  pm.test(\"Book has all required fields\", function () {",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"",
+							"});",
+							"} else {",
+							"    pm.test(\"Returns empty books array when no match\", function () {",
+							"        pm.expect(pm.response.json().books).to.be.an(\"array\").that.is.empty;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/author/Alastair%20Reynolds",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"author",
+						"Alastair%20Reynolds"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE 404 books by author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Author not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/author/Owen%20Orlic",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"author",
+						"Owen%20Orlic"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET books by author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has books object\", () => {",
+							"    pm.expect(response).to.have.property(\"books\");",
+							"    pm.expect(response.books).to.be.an(\"array\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'books' array\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"books\");",
+							"    pm.expect(json.books).to.be.an(\"array\");",
+							"});",
+							"",
+							"if (pm.response.json().books.length > 0) {",
+							"    const book = pm.response.json().books[0];",
+							"",
+							"  pm.test(\"Book has all required fields\", function () {",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"authors\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"publication\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"ratings\").that.is.an(\"object\");",
+							"    pm.expect(book.ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"icons\").that.is.an(\"object\");",
+							"    pm.expect(book.icons).to.have.property(\"large\").that.is.an(\"string\");",
+							"    pm.expect(book.icons).to.have.property(\"small\").that.is.an(\"string\");",
+							"",
+							"});",
+							"} else {",
+							"    pm.test(\"Returns empty books array when no match\", function () {",
+							"        pm.expect(pm.response.json().books).to.be.an(\"array\").that.is.empty;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/author/J.K.%20Rowling",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"author",
+						"J.K.%20Rowling"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET 404 books by author",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Author not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/author/Owen%20Orlic",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"author",
+						"Owen%20Orlic"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET book's ratings by book ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 200\", () => {",
+							"    pm.response.to.have.status(200);",
+							"})",
+							"",
+							"pm.test(\"Response body has ratings object\", () => {",
+							"    pm.expect(response).to.have.property(\"ratings\");",
+							"})",
+							"",
+							"pm.test(\"Response has 'ratings' object\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"ratings\");",
+							"    pm.expect(json.ratings).to.be.an(\"object\");",
+							"});",
+							"",
+							"",
+							"pm.test(\"Ratings has all required fields\", function () {",
+							"    const ratings = pm.response.json().ratings;",
+							"    pm.expect(ratings).to.have.property(\"average\").that.is.a(\"number\");",
+							"    pm.expect(ratings).to.have.property(\"count\").that.is.a(\"number\");",
+							"    pm.expect(ratings).to.have.property(\"rating_1\").that.is.a(\"number\");",
+							"    pm.expect(ratings).to.have.property(\"rating_2\").that.is.a(\"number\");",
+							"    pm.expect(ratings).to.have.property(\"rating_3\").that.is.a(\"number\");",
+							"    pm.expect(ratings).to.have.property(\"rating_4\").that.is.a(\"number\");",
+							"    pm.expect(ratings).to.have.property(\"rating_5\").that.is.a(\"number\");",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/2/ratings",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"2",
+						"ratings"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET 400 book's ratings by book ID (invalid book ID)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 400\", () => {",
+							"    pm.response.to.have.status(400);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Invalid or missing Book ID - please refer to documentation\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/-2/ratings",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"-2",
+						"ratings"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GET 404 book's ratings by book ID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();",
+							"",
+							"pm.test(\"Response status should be 404\", () => {",
+							"    pm.response.to.have.status(404);",
+							"})",
+							"",
+							"pm.test(\"Response body has message object\", () => {",
+							"    pm.expect(response).to.have.property(\"message\");",
+							"    pm.expect(response.message).to.equal(\"Book not found\");",
+							"})"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/bookid/200000/ratings",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"bookid",
+						"200000",
+						"ratings"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{jwt}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}

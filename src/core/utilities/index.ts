@@ -4,4 +4,11 @@ import { validationFunctions } from './validationUtils';
 
 import { credentialingFunctions } from './credentialingUtils';
 
-export { pool, credentialingFunctions, validationFunctions };
+import { formattingFunctions } from './formattingUtils';
+
+export {
+    pool,
+    credentialingFunctions,
+    validationFunctions,
+    formattingFunctions,
+};
