@@ -80,10 +80,13 @@ const isValidRole = (role: string): boolean => {
     return roleNum >= 1 && roleNum <= 5;
 };
 
-// Add more/your own email validation here. The *rules* must be documented
-// and the client-side validation should match these rules.
-const isValidEmail = (email: string): boolean =>
-    isStringProvided(email) && email.includes('@');
+const isValidEmail = (email: string): boolean => {
+    if (!isStringProvided(email)) return false;
+  
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
 
 /**
  * @apiBody {String} role a role for this user [1–5]
@@ -179,6 +182,12 @@ const passwordMiddlewareCheck = (
  * @apiBody {String} firstname a users first name
  * @apiBody {String} lastname a users last name
  * @apiBody {String} email a users email *unique
+ * Must:
+ * - Be a valid email format (`example@domain.com`)
+ * - Contain exactly one "@" symbol
+ * - Have a valid domain and top-level domain (e.g., ".com")
+ * - Not contain spaces
+ * 
  * @apiBody {String} password a users password
  * @apiBody {String} username a username *unique
  * @apiBody {String} role a role for this user [1-5]

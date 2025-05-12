@@ -1,0 +1,325 @@
+{
+	"info": {
+		"_postman_id": "ff3eb155-7e49-4cb3-a305-8e4abc08493b",
+		"name": "POST New Book",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43705288",
+		"_collection_link": "https://jacob-7976102.postman.co/workspace/Jacob's-Workspace~3d76766f-3710-45b4-84f1-729857820d3e/collection/43705288-ff3eb155-7e49-4cb3-a305-8e4abc08493b?action=share&source=collection_link&creator=43705288"
+	},
+	"item": [
+		{
+			"name": "POST New Book",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Status code is 201\", function () {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has 'book' object\", function () {\r",
+							"    pm.expect(response).to.have.property(\"book\");\r",
+							"    pm.expect(response.book).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const book = response.book;\r",
+							"\r",
+							"pm.test(\"Book has expected top-level fields\", function () {\r",
+							"    pm.expect(book).to.have.property(\"isbn13\");\r",
+							"    pm.expect(book).to.have.property(\"authors\");\r",
+							"    pm.expect(book).to.have.property(\"publication\");\r",
+							"    pm.expect(book).to.have.property(\"original_title\");\r",
+							"    pm.expect(book).to.have.property(\"title\");\r",
+							"    pm.expect(book).to.have.property(\"ratings\");\r",
+							"    pm.expect(book).to.have.property(\"icons\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Ratings object has expected fields\", function () {\r",
+							"    pm.expect(book.ratings).to.have.property(\"average\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"count\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Icons object has expected fields\", function () {\r",
+							"    pm.expect(book.icons).to.have.property(\"large\");\r",
+							"    pm.expect(book.icons).to.have.property(\"small\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"ISBN13 matches\", () => {\r",
+							"    pm.expect(book.isbn13).to.equal(Number(pm.environment.get(\"isbn\")));\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"isbn\", 9999999999999); // assuming the delete route is run on this isbn right after this request\r",
+							"\r",
+							"const title = pm.variables.replaceIn('{{$randomCatchPhrase}}')\r",
+							"pm.environment.set(\"title\", title);\r",
+							"pm.environment.set(\"original_title\", \"Original Title \" + title);\r",
+							"\r",
+							"const numAuthors = Math.floor(Math.random() * 4) + 1;\r",
+							"let authors = [];\r",
+							"for (let i = 0; i < numAuthors; i++) {\r",
+							"    authors.push(pm.variables.replaceIn('{{$randomFullName}}'));\r",
+							"}\r",
+							"const authorsString = `\"${authors.join(', ')}\"`; \r",
+							"pm.environment.set(\"authors\", authorsString);\r",
+							"\r",
+							"pm.environment.set(\"original_publication_year\", Math.floor(Math.random() * (2025 - 1800 + 1)) + 1800);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"isbn13\": {{isbn}},\r\n    \"authors\": {{authors}},\r\n    \"original_publication_year\": {{original_publication_year}},\r\n    \"original_title\": \"{{original_title}}\",\r\n    \"title\": \"{{title}}\",\r\n    \"image_url\": \"http://example.com/large.jpg\",\r\n    \"small_image_url\": \"http://example.com/small.jpg\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Missing Body Parameter (400) - ISBN",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Error message is 'One or more body parameters are missing.'\", function () {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response).to.have.property('error', 'One or more body parameters are missing.');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const title = pm.variables.replaceIn('{{$randomCatchPhrase}}');\r",
+							"pm.environment.set(\"title\", title);\r",
+							"pm.environment.set(\"original_title\", \"Original Title \" + title);\r",
+							"\r",
+							"const numAuthors = Math.floor(Math.random() * 4) + 1;\r",
+							"let authors = [];\r",
+							"for (let i = 0; i < numAuthors; i++) {\r",
+							"    authors.push(pm.variables.replaceIn('{{$randomFullName}}'));\r",
+							"}\r",
+							"const authorsString = `\"${authors.join(', ')}\"`; \r",
+							"pm.environment.set(\"authors\", authorsString);\r",
+							"\r",
+							"pm.environment.set(\"original_publication_year\", Math.floor(Math.random() * (2025 - 1800 + 1)) + 1800);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"authors\": {{authors}},\r\n    \"original_publication_year\": {{original_publication_year}},\r\n    \"original_title\": \"{{original_title}}\",\r\n    \"title\": \"{{title}}\",\r\n    \"image_url\": \"http://example.com/large.jpg\",\r\n    \"small_image_url\": \"http://example.com/small.jpg\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Missing Body Parameter (400) -  Year",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Error message is 'One or more body parameters are missing.'\", function () {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response).to.have.property('error', 'One or more body parameters are missing.');\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"isbn\", 9999999999999); \r",
+							"\r",
+							"const title = pm.variables.replaceIn('{{$randomCatchPhrase}}')\r",
+							"pm.environment.set(\"title\", title);\r",
+							"pm.environment.set(\"original_title\", \"Original Title \" + title);\r",
+							"\r",
+							"const numAuthors = Math.floor(Math.random() * 4) + 1;\r",
+							"let authors = [];\r",
+							"for (let i = 0; i < numAuthors; i++) {\r",
+							"    authors.push(pm.variables.replaceIn('{{$randomFullName}}'));\r",
+							"}\r",
+							"const authorsString = `\"${authors.join(', ')}\"`; \r",
+							"pm.environment.set(\"authors\", authorsString);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"isbn13\": {{isbn}},\r\n    \"authors\": {{authors}},\r\n    \"original_title\": \"{{original_title}}\",\r\n    \"title\": \"{{title}}\",\r\n    \"image_url\": \"http://example.com/large.jpg\",\r\n    \"small_image_url\": \"http://example.com/small.jpg\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/closed/books/",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "DELETE Book by ISBN",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/9999999999999",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"9999999999999"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
