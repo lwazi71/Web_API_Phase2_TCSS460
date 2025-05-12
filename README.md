@@ -76,3 +76,26 @@ Our team used Discord voice chat for real-time communication and discussion duri
 - We found that we had slight struggles with writing Postman tests. We took some time to help each other help understand.
 - Issues with understanding how to work with our current database and more specifically using and writing SQL queries. 
 - Found that we were overcomplicating some of our routes and quickly fixed that.
+
+## Final Production Sprint
+
+### Contribution
+
+- **Jacob Klymenko** - Wrote functionality, documentation, and unit tests for a custom GET normal and small image covers by book ID route. Updated POST create book and GET book by ISBN to match the project's HTTP response guidelines. Updated Apidoc and all tests for their routes. Handled merging branches into dev and main. Wrote authentication validation functionality for email.
+- **Lwazi M Mabota** - Wrote functionality, documentation, and unit tests for the GET book by title. Updated GET all books paginated to match the project's HTTP response guidelines. Wrote authentication validation functionality for password, role, and phone number. Updated Apidoc and all tests for their routes.
+- **Thomas Le** - Wrote functionality, documentation, and unit tests for the DELETE book by ISBN.
+- **Owen Orlic** - Wrote functionality, documentation, and unit tests for DELETE range or series of books (delete all books by certain author). Updated GET books by author, GET books by rating range, and PATCH book ratings routes. Updated Apidoc and all tests for their routes. Updated his previous to match the project's HTTP response guidelines.
+
+
+### Meetings
+- **Monday, May 5 (10:30 AM - 11:30 AM)** - Discord Voice Chat
+    - Discussed plan for remaining tasks to finalize backend. Decided who would be incharge of what routes that still had to be written and tested.
+- **Friday May 9 (11:15 AM - 1:15 PM)** - Discord Voice Chat
+    - Moved books.ts to the closed route. Discussed updating code, documentation, and tests to all work with authentication. Additionally, dicussed updating HTTP responses on all routes to keep everything uniform with the project's response guidelines.
+- **Sunday May 11 (5:30 PM - 7:30 PM)** - Discord Voice Chat
+    - Merged all our updated and new code into dev branch. Handled all resulting merge conflicts. Reran Apidocs and merged dev into main marking the finish of the production web API.
+
+### Comments
+
+- We have realized that we should have separated routes into separate files to avoid the continous merge conflicts that were encountered.
+- After Thursday lecture, we figured out that we need to update all our routes that are returning a book response and have them match the project's HTTP response guidelines.
