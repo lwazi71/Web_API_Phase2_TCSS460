@@ -974,6 +974,8 @@ booksRouter.patch(
             bookid
         );
 
+        if (currRatings === undefined) return;
+
         try {
             const theUpdateQuery = `
                 UPDATE ratings
@@ -1118,6 +1120,8 @@ booksRouter.patch(
             rateLevel,
             bookid
         );
+
+        if (currRatings === undefined) return;
 
         try {
             const theUpdateQuery = `
