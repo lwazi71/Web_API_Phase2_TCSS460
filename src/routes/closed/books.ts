@@ -124,9 +124,8 @@ function mwValidAuthor(
  *
  * @apiBody {String} title Full title of the book. (required)
  * @apiBody {String} original_title Original title of the book. (required)
- * @apiBody {BigInt} isbn13 ISBN-13 number (13 digits). (required)
+ * @apiBody {BigInt} isbn13 ISBN-13 number (10–13 digits). (required)
  * @apiBody {Number} original_publication_year Year the book was published. (required)
- * @apiBody {String} authors Comma-separated list of authors. (required)
  * @apiBody {String} image_url Link to the large image of the book. (required)
  * @apiBody {String} small_image_url Link to the small image of the book. (required)
  *
@@ -135,123 +134,68 @@ function mwValidAuthor(
  *    HTTP/1.1 201 Created
  *    {
  *      "book": {
+ *          "book_id": 12345,
  *          "isbn13": 9781234567897,
- *          "authors": "Author One, Author Two",
- *          "publication": 1999,
+ *          "original_publication_year": 1999,
  *          "original_title": "Example Title",
  *          "title": "Example Title Full",
- *          "ratings": {
- *              "average": 0,
- *              "count": 0,
- *              "rating_1": 0,
- *              "rating_2": 0,
- *              "rating_3": 0,
- *              "rating_4": 0,
- *              "rating_5": 0
- *          },
- *          "icons": {
- *              "large": "http://example.com/large.jpg",
- *              "small": "http://example.com/small.jpg"
- *          }
+ *          "image_url": "http://example.com/large.jpg",
+ *          "small_image_url": "http://example.com/small.jpg"
  *      }
  *    }
  *
- * @apiError (400) InvalidInput "One or more body parameters are invalid."
- * @apiError (500) ServerError "Server error - contact support"
+ * @apiError (400) InvalidInput "Invalid input data"
+ * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.post('/', async (request: Request, response: Response) => {
     const {
-        isbn13,
-        authors,
-        original_publication_year,
-        original_title,
         title,
+        original_title,
+        isbn13,
+        original_publication_year,
         image_url,
-        small_image_url
+        small_image_url,
     } = request.body;
 
-    // validate required input
+    // Validate input
     if (
         !title ||
         !original_title ||
         !isbn13 ||
         !original_publication_year ||
         !image_url ||
-        !small_image_url || 
-        !authors
+        !small_image_url
     ) {
         return response.status(400).send({
-            error: 'One or more body parameters are missing.',
+            message: 'Invalid input data',
         });
     }
 
     try {
-        await pool.query('BEGIN');
+        const isbnNumber = BigInt(isbn13);
+        const dummyBookId = Math.floor(Math.random() * 1000000);
 
-        // insert the book
-        const insertBookQuery = `
-            INSERT INTO books (
-                isbn13, original_publication_year,
-                original_title, title, image_url, small_image_url
-            )
-            VALUES ($1, $2, $3, $4, $5, $6)
-            RETURNING *
+        const insertQuery = `
+            INSERT INTO books (book_id, isbn13, original_publication_year, original_title, title, image_url, small_image_url)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING book_id, isbn13, original_publication_year, original_title, title, image_url, small_image_url
         `;
         const values = [
-            BigInt(isbn13),
+            dummyBookId,
+            isbnNumber,
             original_publication_year,
             original_title,
             title,
             image_url,
-            small_image_url
+            small_image_url,
         ];
-        const result = await pool.query(insertBookQuery, values);
-        const book = result.rows[0];
 
-        // insert authors
-        const authorList = [...new Set(authors.split(',').map((a: string) => a.trim()))];
-        const insertAuthorQuery = `
-            INSERT INTO authors (book_id, author) VALUES ($1, $2)
-        `;
-        for (const author of authorList) {
-            await pool.query(insertAuthorQuery, [book.book_id, author])
-        }
+        const result = await pool.query(insertQuery, values);
 
-        // insert default ratings
-        const insertRatingsQuery = `
-            INSERT INTO ratings (
-                book_id, ratings_1, ratings_2, ratings_3, ratings_4, ratings_5
-            )
-            VALUES ($1, 0, 0, 0, 0, 0)
-        `;
-        await pool.query(insertRatingsQuery, [book.book_id])
-
-        await pool.query('COMMIT');
-
-        const formattedBook: IBook = {
-            isbn13: Number(book.isbn13),
-            authors: authorList.join(', '),
-            publication: book.original_publication_year,
-            original_title: book.original_title,
-            title: book.title,
-            ratings: {
-                average: 0,
-                count: 0,
-                rating_1: 0,
-                rating_2: 0,
-                rating_3: 0,
-                rating_4: 0,
-                rating_5: 0
-            },
-            icons: {
-                large: book.image_url,
-                small: book.small_image_url
-            }
-        };
-
-        response.status(201).send({ book: formattedBook });
+        response.status(201).send({
+            book: result.rows[0],
+        });
     } catch (error) {
-        await pool.query('ROLLBACK');
         console.error('DB Query error on POST /books');
         console.error(error);
         response.status(500).send({
@@ -467,11 +411,15 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 
     try {
         const booksQuery = `
-            SELECT *
-            FROM books
-            ORDER BY id
-                LIMIT $1 OFFSET $2
-        `;
+    SELECT 
+        b.*, 
+        STRING_AGG(a.author, ', ') AS authors
+    FROM books b
+    JOIN authors a ON b.book_id = a.book_id
+    GROUP BY b.book_id
+    ORDER BY b.book_id
+    LIMIT $1 OFFSET $2
+`;
         const countQuery = `SELECT COUNT(*) FROM books`;
 
         const [booksResult, countResult] = await Promise.all([
@@ -481,29 +429,8 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 
         const total = parseInt(countResult.rows[0].count);
 
-        const books: IBook[] = booksResult.rows.map((book: any): IBook => ({
-            isbn13: Number(book.isbn13),
-            authors: book.authors,
-            publication: book.publication_year,
-            original_title: book.original_title,
-            title: book.title,
-            ratings: {
-                average: book.rating_avg,
-                count: book.rating_count,
-                rating_1: book.rating_1_star,
-                rating_2: book.rating_2_star,
-                rating_3: book.rating_3_star,
-                rating_4: book.rating_4_star,
-                rating_5: book.rating_5_star,
-            },
-            icons: {
-                large: book.image_url,
-                small: book.image_small_url,
-            },
-        }));
-
         response.send({
-            books,
+            books: booksResult.rows,
             total,
             page,
             limit,
@@ -992,46 +919,6 @@ booksRouter.patch(
 );
 
 /**
-Thomas-Branch
- * @api {delete} /books/:isbn13 Delete a book by ISBN-13
- * @apiName DeleteBook
- * @apiGroup Books
- *
- * @apiParam {BigInt} isbn13 ISBN-13 number of the book to delete.
- *
- * @apiSuccess {String} message Confirmation of deletion.
- *
- * @apiError (404) NotFound Book not found.
- * @apiError (500) ServerError "server error - contact support"
- */
-booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
-    const { isbn13 } = request.params;
-
-    try {
-        const isbnNumber = BigInt(isbn13); // Validate input as BigInt
-
-        const deleteQuery = `DELETE FROM books WHERE isbn13 = $1 RETURNING *`;
-        const result = await pool.query(deleteQuery, [isbnNumber]);
-
-        if (result.rowCount === 0) {
-            return response.status(404).send({
-                message: `Book with ISBN ${isbn13} not found.`,
-            });
-        }
-
-        response.send({
-            message: `Book with ISBN ${isbn13} has been deleted.`,
-        });
-    } catch (error) {
-        console.error('DB Query error on DELETE /books/:isbn13');
-        console.error(error);
-        response.status(500).send({
-            message: 'server error - contact support',
-        });
-    }
-});
-
-=======
  * @api {get} /closed/books/bookid/:bookid/ratings Get ratings for a specific book
  *
  * @apiDescription Request to ratings for a book. Book is retrieved from the book ID.
