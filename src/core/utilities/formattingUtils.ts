@@ -59,7 +59,7 @@ async function getCurrentNumAtRateLevel(
     rateLevel: string,
     bookid: bigint
 ): Promise<number> {
-    let currRatings: number;
+    //let currRatings: number;
     try {
         const ratingQuery = `
                 SELECT ${rateLevel}
