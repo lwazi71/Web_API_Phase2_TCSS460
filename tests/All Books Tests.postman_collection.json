@@ -59,10 +59,7 @@
 			},
 			"request": {
 				"auth": {
-					"type": "bearer",
-					"bearer": {
-						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoyLCJpZCI6NDIsImlhdCI6MTc0NjU2NTI0MywiZXhwIjoxNzQ3Nzc0ODQzfQ.4zYJXSt9PRxq95-e3hI3MfsElglBi54QXn2dyK2CX8k"
-					}
+					"type": "noauth"
 				},
 				"method": "GET",
 				"header": [],
@@ -76,14 +73,13 @@
 					}
 				},
 				"url": {
-					"raw": "http://localhost:4000/closed/books?page=1&limit=5",
+					"raw": "http://localhost:4000/books?page=1&limit=5",
 					"protocol": "http",
 					"host": [
 						"localhost"
 					],
 					"port": "4000",
 					"path": [
-						"closed",
 						"books"
 					],
 					"query": [
@@ -140,13 +136,6 @@
 						"type": "text/javascript",
 						"packages": {}
 					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"packages": {},
-						"type": "text/javascript"
-					}
 				}
 			],
 			"request": {
@@ -158,7 +147,7 @@
 				},
 				"method": "GET",
 				"header": [],
-				"url": "http://localhost:4000/closed/books/title/m0byb dick"
+				"url": "http://localhost:4000/closed/books/title/kill bird"
 			},
 			"response": []
 		}
