@@ -87,6 +87,24 @@ async function getCurrentNumAtRateLevel(
     return currRatings;
 }
 
+function getFormattedRatings(result: QueryResult): IRatings {
+    const { book_id, ratings_1, ratings_2, ratings_3, ratings_4, ratings_5 } =
+        result.rows[0];
+
+    const count = calcRatingsCount(result.rows[0]);
+    const average = count === 0 ? 0 : calcRatingsAverage(result.rows[0]);
+
+    return {
+        average,
+        count,
+        rating_1: ratings_1,
+        rating_2: ratings_2,
+        rating_3: ratings_3,
+        rating_4: ratings_4,
+        rating_5: ratings_5,
+    };
+}
+
 function getFormattedBook(result: QueryResult): IBook {
     const {
         isbn13,
@@ -175,6 +193,7 @@ const formattingFunctions = {
     calcRatingsCount,
     calcRatingsAverage,
     getCurrentNumAtRateLevel,
+    getFormattedRatings,
     getFormattedBook,
     getFormattedBooksList,
 };

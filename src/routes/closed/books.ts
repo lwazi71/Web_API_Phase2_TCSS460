@@ -16,6 +16,7 @@ const isNumberProvided = validationFunctions.isNumberProvided;
 const calcRatingsCount = formattingFunctions.calcRatingsCount;
 const calcRatingsAverage = formattingFunctions.calcRatingsAverage;
 const getCurrentNumAtRateLevel = formattingFunctions.getCurrentNumAtRateLevel;
+const getFormattedRatings = formattingFunctions.getFormattedRatings;
 const getFormattedBook = formattingFunctions.getFormattedBook;
 const getFormattedBooksList = formattingFunctions.getFormattedBooksList;
 
@@ -1239,12 +1240,7 @@ booksRouter.get(
             const result = await pool.query(theQuery, [bookid]);
 
             if (result.rowCount == 1) {
-                const { book_id, ...theRatings } = result.rows[0];
-                const ratings: IRatings = {
-                    average: calcRatingsAverage(result.rows[0]),
-                    count: calcRatingsCount(result.rows[0]),
-                    ...theRatings,
-                };
+                const ratings: IRatings = getFormattedRatings(result);
                 response.status(200).send({ ratings });
             } else {
                 response.status(404).send({
