@@ -39,7 +39,7 @@ function mwValidISBN(request: Request, response: Response, next: NextFunction) {
     const isValid = /^[0-9]{10,13}$/.test(isbn);
     if (isValid) next();
     else {
-        response.status(400).send({ message: 'Invalid ISBN format.' });
+        response.status(400).send({ error: 'Invalid ISBN format.' });
     }
 }
 
@@ -296,38 +296,99 @@ booksRouter.get(
 booksRouter.get(
     '/isbn/:isbn',
     mwValidISBN,
-    async (request: Request, response: Response) => {
-        const isbnParam = request.params.isbn;
-        const isbnNumber = BigInt(isbnParam);
+    async (req: Request, res: Response) => {
+        const isbn = parseInt(req.params.isbn);
 
         try {
-            const theQuery = `
-            SELECT *
-            FROM books
-            WHERE isbn13 = $1
-        `;
-            const values = [isbnNumber];
+            const query = `
+                SELECT 
+                    b.isbn13,
+                    b.original_publication_year,
+                    b.original_title,
+                    b.title,
+                    b.image_url,
+                    b.small_image_url,
+                    STRING_AGG(a.author, ', ') AS authors,
+                    r.ratings_1,
+                    r.ratings_2,
+                    r.ratings_3,
+                    r.ratings_4,
+                    r.ratings_5
+                FROM books b
+                JOIN authors a ON b.book_id = a.book_id
+                LEFT JOIN ratings r ON b.book_id = r.book_id
+                WHERE b.isbn13 = $1
+                GROUP BY 
+                    b.book_id, 
+                    b.isbn13, 
+                    b.original_publication_year, 
+                    b.original_title, 
+                    b.title, 
+                    b.image_url, 
+                    b.small_image_url,
+                    r.ratings_1, r.ratings_2, r.ratings_3, r.ratings_4, r.ratings_5
+            `;
 
-            const result = await pool.query(theQuery, values);
+            const result = await pool.query(query, [isbn])
 
-            if (result.rowCount > 0) {
-                response.send({
-                    book: result.rows[0],
-                });
-            } else {
-                response.status(404).send({
-                    message: 'Book not found',
+            if (result.rowCount === 0) {
+                return res.status(404).json({
+                    message: `Book with ISBN of '${isbn}' not found.`
                 });
             }
+
+            const book: IBook = (() => {
+                const {
+                    isbn13,
+                    authors,
+                    original_publication_year,
+                    original_title,
+                    title,
+                    image_url,
+                    small_image_url,
+                    ratings_1 = 0,
+                    ratings_2 = 0,
+                    ratings_3 = 0,
+                    ratings_4 = 0,
+                    ratings_5 = 0
+                } = result.rows[0];
+
+                const count = calcRatingsCount(result.rows[0]);
+                const average = count === 0 ? 0 : calcRatingsAverage(result.rows[0]);
+
+                return {
+                    isbn13: Number(isbn13),
+                    authors,
+                    publication: original_publication_year,
+                    original_title,
+                    title,
+                    ratings: {
+                        average,
+                        count,
+                        rating_1: ratings_1,
+                        rating_2: ratings_2,
+                        rating_3: ratings_3,
+                        rating_4: ratings_4,
+                        rating_5: ratings_5,
+                    },
+                    icons: {
+                        large: image_url,
+                        small: small_image_url,
+                    }
+                };
+            })();
+
+            res.status(200).json({ book })
         } catch (error) {
-            console.error('DB Query error on GET /isbn/:isbn');
+            console.error('DB Query error on GET /books/isbn/:isbn');
             console.error(error);
-            response.status(500).send({
+            res.status(500).send({
                 message: 'server error - contact support',
             });
         }
     }
 );
+
 /**
  * @api {get} /books Retrieve all books (paginated)
  * @apiName GetAllBooks
@@ -478,8 +539,8 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
     const offset: number = (page - 1) * limit; // for PostgreSQL OFFSET
     const orderInSQL: 'ASC' | 'DESC' = order === 'old' ? 'ASC' : 'DESC'; // can only ever be 'ASC' or 'DESC'
 
-        try {
-            const query = `
+    try {
+        const query = `
                 SELECT 
                     b.isbn13,
                     b.original_publication_year,
@@ -500,65 +561,59 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
                 ORDER BY b.original_publication_year ${orderInSQL}
                 LIMIT $1 OFFSET $2
             `;
-    
-            const result = await pool.query(query, [limit, offset]);
-    
-            const books: IBook[] = result.rows.map(row => {
-                const { 
-                    isbn13,
-                    authors,
-                    original_publication_year,
-                    original_title,
-                    title,
-                    image_url,
-                    small_image_url,
-                    ratings_1 = 0,
-                    ratings_2 = 0,
-                    ratings_3 = 0,
-                    ratings_4 = 0,
-                    ratings_5 = 0
-                } = row;
-    
-                const count = ratings_1 + ratings_2 + ratings_3 + ratings_4 + ratings_5;
-                const average = count === 0 ? 0 : (
-                    (1 * ratings_1 +
-                     2 * ratings_2 +
-                     3 * ratings_3 +
-                     4 * ratings_4 +
-                     5 * ratings_5) / count
-                );
-    
-                return {
-                    isbn13: Number(isbn13),
-                    authors,
-                    publication: original_publication_year,
-                    original_title,
-                    title,
-                    ratings: {
-                        average: parseFloat(average.toFixed(2)),
-                        count,
-                        rating_1: ratings_1,
-                        rating_2: ratings_2,
-                        rating_3: ratings_3,
-                        rating_4: ratings_4,
-                        rating_5: ratings_5,
-                    },
-                    icons: {
-                        large: image_url,
-                        small: small_image_url,
-                    }
-                };
-            });
-    
-            res.status(200).json({ books });
-        } catch (error) {
-            console.error('Database query error on GET /books/age');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
-            });
-        }
+
+        const result = await pool.query(query, [limit, offset]);
+
+        const books: IBook[] = result.rows.map(row => {
+            const {
+                isbn13,
+                authors,
+                original_publication_year,
+                original_title,
+                title,
+                image_url,
+                small_image_url,
+                ratings_1 = 0,
+                ratings_2 = 0,
+                ratings_3 = 0,
+                ratings_4 = 0,
+                ratings_5 = 0
+            } = row;
+
+            const count = calcRatingsCount(row);
+            const average = count === 0 ? 0 : calcRatingsAverage(row);
+
+            return {
+                isbn13: Number(isbn13),
+                authors,
+                publication: original_publication_year,
+                original_title,
+                title,
+                ratings: {
+                    average,
+                    count,
+                    rating_1: ratings_1,
+                    rating_2: ratings_2,
+                    rating_3: ratings_3,
+                    rating_4: ratings_4,
+                    rating_5: ratings_5,
+                },
+                icons: {
+                    large: image_url,
+                    small: small_image_url,
+                }
+            };
+        });
+
+        res.status(200).json({ books });
+    } catch (error) {
+        console.error('Database query error on GET /books/age');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
+}
 );
 
 /**
@@ -1007,7 +1062,7 @@ async function getCurrentNumAtRateLevel(
 
     return currRatings;
 }
- 
+
 /**
  * @api {get} /books/:bookId/image Retrieve image of a book
  * @apiName GetBookImage
@@ -1028,38 +1083,38 @@ async function getCurrentNumAtRateLevel(
  * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
-        const bookId: number = parseInt(req.params.bookId);
+    const bookId: number = parseInt(req.params.bookId);
 
-        if (isNaN(bookId) || bookId <= 0) {
-            return res.status(400).json({
-                error: 'Invalid book ID parameter. It must be a number and positive.'
-            });
-        }
+    if (isNaN(bookId) || bookId <= 0) {
+        return res.status(400).json({
+            error: 'Invalid book ID parameter. It must be a number and positive.'
+        });
+    }
 
-        try {
-            const query: string = `
+    try {
+        const query: string = `
                 SELECT image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-            const result = await pool.query(query, [bookId]);
+        const result = await pool.query(query, [bookId]);
 
-            if (result.rowCount == 0 || !result.rows[0].image_url) {
-                return res.status(404).json({
-                    error: 'Image not found for given book ID.'
-                });
-            }
-        
-            res.status(200).json({ image: result.rows[0].image_url});
-        } catch (error) {
-            console.error('Database query error on GET /books/:bookId/image');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
+        if (result.rowCount == 0 || !result.rows[0].image_url) {
+            return res.status(404).json({
+                error: 'Image not found for given book ID.'
             });
         }
+
+        res.status(200).json({ image: result.rows[0].image_url });
+    } catch (error) {
+        console.error('Database query error on GET /books/:bookId/image');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
+}
 );
 
 /**
@@ -1082,38 +1137,38 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
  * @apiError (500) ServerError "server error - contact support"
  */
 booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
-        const bookId: number = parseInt(req.params.bookId);
+    const bookId: number = parseInt(req.params.bookId);
 
-        if (isNaN(bookId) || bookId <= 0) {
-            return res.status(400).json({
-                error: 'Invalid book ID parameter. It must be a number and positive.'
-            });
-        }
+    if (isNaN(bookId) || bookId <= 0) {
+        return res.status(400).json({
+            error: 'Invalid book ID parameter. It must be a number and positive.'
+        });
+    }
 
-        try {
-            const query: string = `
+    try {
+        const query: string = `
                 SELECT small_image_url
                 FROM books
                 WHERE book_id = $1
             `;
 
-            const result = await pool.query(query, [bookId]);
+        const result = await pool.query(query, [bookId]);
 
-            if (result.rowCount === 0 || !result.rows[0].small_image_url) {
-                return res.status(404).json({
-                    error: 'Small image not found for given book ID.'
-                });
-            }
-        
-            res.status(200).json({ image: result.rows[0].small_image_url});
-        } catch (error) {
-            console.error('Database query error on GET /books/:bookId/small-image');
-            console.error(error);
-            res.status(500).send({
-                error: 'server error - contact support',
+        if (result.rowCount === 0 || !result.rows[0].small_image_url) {
+            return res.status(404).json({
+                error: 'Small image not found for given book ID.'
             });
         }
+
+        res.status(200).json({ image: result.rows[0].small_image_url });
+    } catch (error) {
+        console.error('Database query error on GET /books/:bookId/small-image');
+        console.error(error);
+        res.status(500).send({
+            error: 'server error - contact support',
+        });
     }
+}
 );
 
 /**
