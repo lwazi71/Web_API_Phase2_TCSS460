@@ -95,6 +95,61 @@
 				}
 			},
 			"response": []
+		},
+		{
+			"name": "Title Test",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has 'books' array\", function () {",
+							"    const json = pm.response.json();",
+							"    pm.expect(json).to.have.property(\"books\");",
+							"    pm.expect(json.books).to.be.an(\"array\");",
+							"});",
+							"",
+							"",
+							"if (pm.response.json().books.length > 0) {",
+							"    const book = pm.response.json().books[0];",
+							"    ",
+							"  pm.test(\"Book has all required fields\", function () {",
+							"    pm.expect(book).to.have.property(\"book_id\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"isbn13\").that.is.a(\"string\").and.matches(/^\\d{10,13}$/);",
+							"    pm.expect(book).to.have.property(\"title\").that.is.a(\"string\").and.not.empty;",
+							"    pm.expect(book).to.have.property(\"original_title\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"original_publication_year\").that.is.a(\"number\");",
+							"    pm.expect(book).to.have.property(\"image_url\").that.is.a(\"string\");",
+							"    pm.expect(book).to.have.property(\"small_image_url\").that.is.a(\"string\");",
+							"});",
+							"} else {",
+							"    pm.test(\"Returns empty books array when no match\", function () {",
+							"        pm.expect(pm.response.json().books).to.be.an(\"array\").that.is.empty;",
+							"    });",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": {
+						"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoyLCJpZCI6NDIsImlhdCI6MTc0NjU2NTI0MywiZXhwIjoxNzQ3Nzc0ODQzfQ.4zYJXSt9PRxq95-e3hI3MfsElglBi54QXn2dyK2CX8k"
+					}
+				},
+				"method": "GET",
+				"header": [],
+				"url": "http://localhost:4000/closed/books/title/kill bird"
+			},
+			"response": []
 		}
 	]
 }

@@ -1,0 +1,233 @@
+{
+	"info": {
+		"_postman_id": "a0056d8f-d522-4265-a1e7-e5223f191f87",
+		"name": "GET Book by ISBN-13",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43705288",
+		"_collection_link": "https://jacob-7976102.postman.co/workspace/Jacob's-Workspace~3d76766f-3710-45b4-84f1-729857820d3e/collection/43705288-a0056d8f-d522-4265-a1e7-e5223f191f87?action=share&source=collection_link&creator=43705288"
+	},
+	"item": [
+		{
+			"name": "GET Book by ISBN",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const isbnList = [\r",
+							"    \"9780062316870\", \"9780688170270\", \"9780060928410\", \"9780441012920\", \"9781596434030\", \r",
+							"    \"9780399256450\", \"9780345472440\", \"9780679724630\", \"9780691024170\", \"9781400069350\"\r",
+							"];\r",
+							"\r",
+							"const randIdx = Math.floor(Math.random() * isbnList.length);\r",
+							"pm.environment.set(\"isbn\", isbnList[randIdx]);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Response has 'book' object\", function () {\r",
+							"    pm.expect(response).to.have.property(\"book\");\r",
+							"    pm.expect(response.book).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const book = response.book;\r",
+							"\r",
+							"pm.test(\"Book has expected top-level fields\", function () {\r",
+							"    pm.expect(book).to.have.property(\"isbn13\");\r",
+							"    pm.expect(book).to.have.property(\"authors\");\r",
+							"    pm.expect(book).to.have.property(\"publication\");\r",
+							"    pm.expect(book).to.have.property(\"original_title\");\r",
+							"    pm.expect(book).to.have.property(\"title\");\r",
+							"    pm.expect(book).to.have.property(\"ratings\");\r",
+							"    pm.expect(book).to.have.property(\"icons\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Ratings object has expected fields\", function () {\r",
+							"    pm.expect(book.ratings).to.have.property(\"average\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"count\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_1\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_2\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_3\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_4\");\r",
+							"    pm.expect(book.ratings).to.have.property(\"rating_5\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Icons object has expected fields\", function () {\r",
+							"    pm.expect(book.icons).to.have.property(\"large\");\r",
+							"    pm.expect(book.icons).to.have.property(\"small\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/isbn/{{isbn}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"isbn",
+						"{{isbn}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Invalid ISBN (400 - Middleware)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const invalidIsbns = [\r",
+							"    \"35453\", \"asdf46\", \"adfg5\", \"97804df416743012920\", \r",
+							"    \"3242\", \"435ggh\", \"978067fdsf9724630\"\r",
+							"];\r",
+							"\r",
+							"const randIdx = Math.floor(Math.random() * invalidIsbns.length);\r",
+							"pm.environment.set(\"isbn\", invalidIsbns[randIdx]);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Invalid ISBN returns 400 Bad Request\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"    const json = pm.response.json();\r",
+							"    pm.expect(json).to.have.property(\"error\");\r",
+							"    pm.expect(json.error).to.match(/invalid|not a valid/i);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/isbn/{{isbn}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"isbn",
+						"{{isbn}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Book NOT Found (404)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// these ISBN values are valid, but don't exist in the database\r",
+							"const validIsbn = [\r",
+							"    \"9780000000000\", \"9780000000001\", \"9780000000002\", \"9780000000003\", \r",
+							"    \"9780000000004\", \"9789999999999\", \"9789999999998\"\r",
+							"];\r",
+							"\r",
+							"const randIdx = Math.floor(Math.random() * validIsbn.length);\r",
+							"pm.environment.set(\"isbn\", validIsbn[randIdx]);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Valid but non-existent ISBN returns 404\", function () {\r",
+							"    pm.response.to.have.status(404);\r",
+							"    const json = pm.response.json();\r",
+							"    pm.expect(json).to.have.property(\"message\");\r",
+							"    pm.expect(json.message).to.match(/not found/i);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/closed/books/isbn/{{isbn}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"closed",
+						"books",
+						"isbn",
+						"{{isbn}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
