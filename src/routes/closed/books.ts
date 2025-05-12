@@ -153,7 +153,6 @@ function mwValidAuthor(
  * @apiError (400) InvalidInput "One or more body parameters are invalid."
  * @apiError (500) ServerError "Server error - contact support"
  */
-
 booksRouter.post('/', async (request: Request, response: Response) => {
     const {
         isbn13,
@@ -204,7 +203,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
         const book = result.rows[0];
 
         // insert authors
-        const authorList = authors.split(',').map((a: string) => a.trim());
+        const authorList = [...new Set(authors.split(',').map((a: string) => a.trim()))];
         const insertAuthorQuery = `
             INSERT INTO authors (book_id, author) VALUES ($1, $2)
         `;
