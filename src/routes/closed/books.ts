@@ -119,7 +119,7 @@ function mwValidAuthor(
 /**
  * @api {post} /books Create a new book
  * @apiName CreateBook
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiBody {String} title Full title of the book. (required)
@@ -266,7 +266,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
  * @apiDescription Request to get books by a certain author. This will retrieve all books that the author wrote and co-wrote.
  *
  * @apiName GetBooksByAuthor
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {String} author Author's full name (URL encoded if needed).
@@ -381,7 +381,7 @@ booksRouter.get(
 /**
  * @api {get} /books/isbn/:isbn Retrieve a book by ISBN
  * @apiName GetBookByISBN
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {String} isbn ISBN-13 number (10–13 digits).
@@ -504,7 +504,7 @@ booksRouter.get(
 /**
  * @api {get} /books Retrieve all books (paginated)
  * @apiName GetAllBooks
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiQuery {Number} [page=1] Page number for pagination.
@@ -618,7 +618,7 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 /**
  * @api {get} /books/age Retrieve books by age (publication year)
  * @apiName GetBooksByAge
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiQuery {String="old","new"} order Required. Sort order: "old" for oldest first, "new" for newest first.
@@ -793,7 +793,7 @@ booksRouter.get('/age', async (req: Request, res: Response) => {
  * @apiDescription Request to get books whose ratings fall in a range of average ratings (both minimum and maximum average ratings are inclusive)
  *
  * @apiName GetBooksByAvgRating
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiQuery {Number{1.0-5.0}} [minRating=1.0] Minimum average rating (inclusive)
@@ -920,7 +920,7 @@ booksRouter.get(
  * @apiDescription Request to edit the number of ratings that a certain book has under a certain rating level.
  *
  * @apiName PatchBookRatingCount
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {Number} bookid The ID number of the book
@@ -1067,7 +1067,7 @@ booksRouter.patch(
  * to retrieve the current number of ratings a book has at a specific rating level so that it can update the ratings table.
  *
  * @apiName PatchIncrementBookRatingCount
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {Number} bookid The ID number of the book
@@ -1215,7 +1215,7 @@ booksRouter.patch(
  * to retrieve the current number of ratings a book has at a specific rating level so that it can update the ratings table.
  *
  * @apiName PatchDecrementBookRatingCount
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {Number} bookid The ID number of the book
@@ -1358,7 +1358,7 @@ booksRouter.patch(
 /**
  * @api {delete} /books/:isbn13 Delete a book by ISBN-13
  * @apiName DeleteBook
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {BigInt} isbn13 ISBN-13 number of the book to delete.
@@ -1401,7 +1401,7 @@ booksRouter.delete('/:isbn13', async (request: Request, response: Response) => {
  * @apiDescription Request to ratings for a book. Book is retrieved from the book ID. Only the ratings are returned, not the full book info.
  *
  * @apiName GetBookRatings
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {Number} bookid The ID number of the book
@@ -1469,7 +1469,7 @@ booksRouter.get(
 /**
  * @api {get} /books/:bookId/image Retrieve image of a book
  * @apiName GetBookImage
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {Number} bookId Book ID (must be a positive number).
@@ -1524,7 +1524,7 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
 /**
  * @api {get} /books/:bookId/small-image Retrieve small image of a book
  * @apiName GetBookSmallImage
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {Number} bookId Book ID (must be a positive number).
@@ -1579,7 +1579,7 @@ booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
 /**
  * @api {get} /books/title/:title Fuzzy search books by title
  * @apiName GetBooksByTitle
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {String} title A fuzzy or partial book title (can be misspelled).
@@ -1688,7 +1688,7 @@ booksRouter.get('/title/:title', async (req: Request, res: Response) => {
  * @apiDescription Deletes books based on the books author. This will delete all books that the author wrote and co-wrote.
  *
  * @apiName DeleteBooksByAuthor
- * @apiGroup *Closed Books
+ * @apiGroup Books (Closed)
  * @apiPermission authenticated
  *
  * @apiParam {String} author The author's full name

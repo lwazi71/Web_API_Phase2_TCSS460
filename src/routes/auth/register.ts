@@ -180,8 +180,16 @@ const passwordMiddlewareCheck = (
 /**
  * @api {post} /register Request to register a user
  *
- * @apiDescription Document this route. !**Document the password rules here**!
- * !**Document the role rules here**!
+ * @apiDescription Registers a new user. Password must:
+ * - Be at least 10 characters long
+ * - Include at least one uppercase letter
+ * - Include at least one lowercase letter
+ * - Include at least one digit
+ * - Include at least one exclamation mark (!)
+ * - Not contain 3 or more of the same character in a row
+ * - Use only A-Z, a-z, 0–9, and !
+ *
+ * Role must be a number from 1–5 representing access level.
  *
  * @apiName PostRegister
  * @apiGroup Auth
