@@ -41,13 +41,10 @@ const isValidRole = (priority: string): boolean =>
     parseInt(priority) >= 1 &&
     parseInt(priority) <= 5;
 
-const isValidEmail = (email: string): boolean => {
-    if (!isStringProvided(email)) return false;
-  
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-  
+// Add more/your own email validation here. The *rules* must be documented
+// and the client-side validation should match these rules.
+const isValidEmail = (email: string): boolean =>
+    isStringProvided(email) && email.includes('@');
 
 // middleware functions may be defined elsewhere!
 const emailMiddlewareCheck = (
@@ -76,12 +73,6 @@ const emailMiddlewareCheck = (
  * @apiBody {String} firstname a users first name
  * @apiBody {String} lastname a users last name
  * @apiBody {String} email a users email *unique
- * Must:
- * - Be a valid email format (`example@domain.com`)
- * - Contain exactly one "@" symbol
- * - Have a valid domain and top-level domain (e.g., ".com")
- * - Not contain spaces
- * 
  * @apiBody {String} password a users password
  * @apiBody {String} username a username *unique
  * @apiBody {String} role a role for this user [1-5]
@@ -104,7 +95,7 @@ const emailMiddlewareCheck = (
  *
  */
 registerRouter.post(
-    '/',
+    '/register',
     emailMiddlewareCheck, // these middleware functions may be defined elsewhere!
     (request: Request, response: Response, next: NextFunction) => {
         //Verify that the caller supplied all the parameters

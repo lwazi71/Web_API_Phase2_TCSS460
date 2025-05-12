@@ -7,7 +7,7 @@ import { closedRoutes } from './closed';
 const routes: Router = express.Router();
 
 routes.use(openRoutes);
-routes.use('/auth', authRoutes);
-routes.use('/closed', closedRoutes);
+routes.use(authRoutes);
+routes.use(closedRoutes);
 
 export { routes };

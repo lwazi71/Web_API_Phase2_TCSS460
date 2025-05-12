@@ -27,34 +27,19 @@
 							"\r",
 							"if (response.books.length > 0) {\r",
 							"    const sample = response.books[0];\r",
-							"\r",
-							"    pm.test(\"Each book has expected top-level fields\", function () {\r",
+							"    pm.test(\"Each book has expected fields\", function () {\r",
+							"        pm.expect(sample).to.have.property(\"book_id\");\r",
 							"        pm.expect(sample).to.have.property(\"isbn13\");\r",
-							"        pm.expect(sample).to.have.property(\"authors\");\r",
-							"        pm.expect(sample).to.have.property(\"publication\");\r",
+							"        pm.expect(sample).to.have.property(\"original_publication_year\");\r",
 							"        pm.expect(sample).to.have.property(\"original_title\");\r",
 							"        pm.expect(sample).to.have.property(\"title\");\r",
-							"        pm.expect(sample).to.have.property(\"ratings\");\r",
-							"        pm.expect(sample).to.have.property(\"icons\");\r",
-							"    });\r",
-							"\r",
-							"    pm.test(\"Ratings object has expected fields\", function () {\r",
-							"        pm.expect(sample.ratings).to.have.property(\"average\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"count\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_1\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_2\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_3\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_4\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_5\");\r",
-							"    });\r",
-							"\r",
-							"    pm.test(\"Icons object has expected fields\", function () {\r",
-							"        pm.expect(sample.icons).to.have.property(\"large\");\r",
-							"        pm.expect(sample.icons).to.have.property(\"small\");\r",
+							"        pm.expect(sample).to.have.property(\"image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"small_image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"authors\");\r",
 							"    });\r",
 							"\r",
 							"    pm.test(\"Books are sorted in ascending order of publication year\", function () {\r",
-							"        const years = response.books.map(book => book.publication);\r",
+							"        const years = response.books.map(book => book.original_publication_year);\r",
 							"        const sorted = [...years].sort((a, b) => a - b);\r",
 							"        pm.expect(years).to.eql(sorted);\r",
 							"    });\r",
@@ -63,17 +48,6 @@
 							"        pm.expect(response.books.length).to.equal(0);\r",
 							"    });\r",
 							"}\r",
-							"\r",
-							""
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"exec": [
 							""
 						],
 						"type": "text/javascript",
@@ -82,25 +56,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=old",
+					"raw": "http://localhost:4000/books/age?order=old",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
@@ -134,36 +99,21 @@
 							"\r",
 							"if (response.books.length > 0) {\r",
 							"    const sample = response.books[0];\r",
-							"\r",
-							"    pm.test(\"Each book has expected top-level fields\", function () {\r",
+							"    pm.test(\"Each book has expected fields\", function () {\r",
+							"        pm.expect(sample).to.have.property(\"book_id\");\r",
 							"        pm.expect(sample).to.have.property(\"isbn13\");\r",
-							"        pm.expect(sample).to.have.property(\"authors\");\r",
-							"        pm.expect(sample).to.have.property(\"publication\");\r",
+							"        pm.expect(sample).to.have.property(\"original_publication_year\");\r",
 							"        pm.expect(sample).to.have.property(\"original_title\");\r",
 							"        pm.expect(sample).to.have.property(\"title\");\r",
-							"        pm.expect(sample).to.have.property(\"ratings\");\r",
-							"        pm.expect(sample).to.have.property(\"icons\");\r",
+							"        pm.expect(sample).to.have.property(\"image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"small_image_url\");\r",
+							"        pm.expect(sample).to.have.property(\"authors\");\r",
 							"    });\r",
 							"\r",
-							"    pm.test(\"Ratings object has expected fields\", function () {\r",
-							"        pm.expect(sample.ratings).to.have.property(\"average\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"count\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_1\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_2\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_3\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_4\");\r",
-							"        pm.expect(sample.ratings).to.have.property(\"rating_5\");\r",
-							"    });\r",
-							"\r",
-							"    pm.test(\"Icons object has expected fields\", function () {\r",
-							"        pm.expect(sample.icons).to.have.property(\"large\");\r",
-							"        pm.expect(sample.icons).to.have.property(\"small\");\r",
-							"    });\r",
-							"\r",
-							"    pm.test(\"Books are sorted in descending order of publication year\", function () {\r",
-							"        const years = response.books.map(book => book.publication);\r",
-							"        const sorted = [...years].sort((a, b) => b - a);\r",
-							"        pm.expect(years).to.eql(sorted);\r",
+							"    pm.test(\"Books are sorted in decreasing order of publication year\", function () {\r",
+							"        const years = response.books.map(book => book.original_publication_year);\r",
+							"        const sorted = [...years].sort((a, b) => b - a); \r",
+							"        pm.expect(years).to.eql(sorted); \r",
 							"    });\r",
 							"} else {\r",
 							"    pm.test(\"Books array is empty (valid but no data returned)\", function () {\r",
@@ -178,25 +128,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=new",
+					"raw": "http://localhost:4000/books/age?order=new",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
@@ -230,25 +171,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age",
+					"raw": "http://localhost:4000/books/age",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					]
@@ -276,25 +208,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=test",
+					"raw": "http://localhost:4000/books/age?order=test",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
@@ -328,25 +251,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=old&limit=-5",
+					"raw": "http://localhost:4000/books/age?order=old&limit=-5",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
@@ -384,25 +298,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=old&limit=205",
+					"raw": "http://localhost:4000/books/age?order=old&limit=205",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
@@ -439,25 +344,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=old&page=-5",
+					"raw": "http://localhost:4000/books/age?order=old&page=-5",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
@@ -494,25 +390,16 @@
 				}
 			],
 			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiMSIsImlkIjo2MCwiaWF0IjoxNzQ2NjcwNzkzLCJleHAiOjE3NDc4ODAzOTN9.EIe_z-ojMU30Fy5siI4m5wRE_s9y9lEhQtuZjXLFMNM",
-							"type": "string"
-						}
-					]
-				},
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{base_url}}/closed/books/age?order=old&page=105",
+					"raw": "http://localhost:4000/books/age?order=old&page=105",
+					"protocol": "http",
 					"host": [
-						"{{base_url}}"
+						"localhost"
 					],
+					"port": "4000",
 					"path": [
-						"closed",
 						"books",
 						"age"
 					],
