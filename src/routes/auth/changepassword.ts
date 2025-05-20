@@ -8,7 +8,7 @@ import {
 const changePasswordRouter: Router = express.Router();
 
 /**
- * @api {patch} /changePassword Change a user's password
+ * @api {patch} /auth/changePassword Change a user's password
  *
  * @apiDescription This route allows a user to change their password by providing their current email, old password, and new password.
  * Passwords are securely hashed and salted before being stored.
