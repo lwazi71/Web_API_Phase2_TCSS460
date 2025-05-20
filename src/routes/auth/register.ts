@@ -178,7 +178,7 @@ const passwordMiddlewareCheck = (
 };
 
 /**
- * @api {post} /register Request to register a user
+ * @api {post} /auth/register Request to register a user
  *
  * @apiDescription Registers a new user. Password must:
  * - Be at least 10 characters long
@@ -219,7 +219,7 @@ const passwordMiddlewareCheck = (
  *
  */
 registerRouter.post(
-    '/',
+    '/register',
     emailMiddlewareCheck,
     phoneMiddlewareCheck,
     passwordMiddlewareCheck,

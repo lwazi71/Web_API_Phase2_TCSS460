@@ -28,7 +28,7 @@ const key = {
 };
 
 /**
- * @api {post} /login Request to sign a user in the system
+ * @api {post} /auth/login Request to sign a user in the system
  * @apiName PostLogin
  * @apiGroup Auth
  *

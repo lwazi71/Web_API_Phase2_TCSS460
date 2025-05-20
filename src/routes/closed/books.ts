@@ -117,7 +117,7 @@ function mwValidAuthor(
 }
 
 /**
- * @api {post} /books Create a new book
+ * @api {post} /closed/books Create a new book
  * @apiName CreateBook
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -261,7 +261,7 @@ booksRouter.post('/', async (request: Request, response: Response) => {
 });
 
 /**
- * @api {get} /books/author/:author Retrieve books by author
+ * @api {get} /closed/books/author/:author Retrieve books by author
  *
  * @apiDescription Request to get books by a certain author. This will retrieve all books that the author wrote and co-wrote.
  *
@@ -379,7 +379,7 @@ booksRouter.get(
 );
 
 /**
- * @api {get} /books/isbn/:isbn Retrieve a book by ISBN
+ * @api {get} /closed/books/isbn/:isbn Retrieve a book by ISBN
  * @apiName GetBookByISBN
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -502,7 +502,7 @@ booksRouter.get(
 );
 
 /**
- * @api {get} /books Retrieve all books (paginated)
+ * @api {get} /closed/books Retrieve all books (paginated)
  * @apiName GetAllBooks
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -616,7 +616,7 @@ booksRouter.get('/', async (request: Request, response: Response) => {
 });
 
 /**
- * @api {get} /books/age Retrieve books by age (publication year)
+ * @api {get} /closed/books/age Retrieve books by age (publication year)
  * @apiName GetBooksByAge
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -1356,7 +1356,7 @@ booksRouter.patch(
 );
 
 /**
- * @api {delete} /books/:isbn13 Delete a book by ISBN-13
+ * @api {delete} /closed/books/:isbn13 Delete a book by ISBN-13
  * @apiName DeleteBook
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -1467,7 +1467,7 @@ booksRouter.get(
 );
 
 /**
- * @api {get} /books/:bookId/image Retrieve image of a book
+ * @api {get} /closed/books/:bookId/image Retrieve image of a book
  * @apiName GetBookImage
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -1522,7 +1522,7 @@ booksRouter.get('/:bookId/image', async (req: Request, res: Response) => {
 );
 
 /**
- * @api {get} /books/:bookId/small-image Retrieve small image of a book
+ * @api {get} /closed/books/:bookId/small-image Retrieve small image of a book
  * @apiName GetBookSmallImage
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
@@ -1577,7 +1577,7 @@ booksRouter.get('/:bookId/small-image', async (req: Request, res: Response) => {
 );
 
 /**
- * @api {get} /books/title/:title Fuzzy search books by title
+ * @api {get} /closed/books/title/:title Fuzzy search books by title
  * @apiName GetBooksByTitle
  * @apiGroup Books (Closed)
  * @apiPermission authenticated
