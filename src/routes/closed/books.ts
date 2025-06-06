@@ -393,11 +393,23 @@ booksRouter.get(
  *      "book": {
  *          "book_id": 12345,
  *          "isbn13": 9781234567897,
- *          "original_publication_year": 1999,
+ *          "authors": "John Doe, Jane Smith",
+ *          "publication": 1999,
  *          "original_title": "Example Title",
  *          "title": "Example Title Full",
- *          "image_url": "http://example.com/large.jpg",
- *          "small_image_url": "http://example.com/small.jpg"
+ *          "ratings": {
+ *              "average": 4.2,
+ *              "count": 120,
+ *              "rating_1": 3,
+ *              "rating_2": 5,
+ *              "rating_3": 12,
+ *              "rating_4": 50,
+ *              "rating_5": 50
+ *          },
+ *          "icons": {
+ *              "large": "http://example.com/large.jpg",
+ *              "small": "http://example.com/small.jpg"
+ *          }
  *      }
  *    }
  *
@@ -414,6 +426,7 @@ booksRouter.get(
         try {
             const query = `
                 SELECT 
+                    b.book_id,
                     b.isbn13,
                     b.original_publication_year,
                     b.original_title,
@@ -449,8 +462,9 @@ booksRouter.get(
                 });
             }
 
-            const book: IBook = (() => {
+            const book = (() => {
                 const {
+                    book_id,
                     isbn13,
                     authors,
                     original_publication_year,
@@ -469,6 +483,7 @@ booksRouter.get(
                 const average = count === 0 ? 0 : calcRatingsAverage(result.rows[0]);
 
                 return {
+                    book_id,
                     isbn13: Number(isbn13),
                     authors,
                     publication: original_publication_year,
